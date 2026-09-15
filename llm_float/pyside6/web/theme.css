@@ -1,0 +1,47 @@
+:root {
+  --bg-card: rgba(20, 21, 28, 0.94);
+  --bg-secondary: rgba(23, 24, 33, 0.96);
+  --titlebar-start: #1b1c26;
+  --titlebar-end: #171821;
+  --divider: rgba(255, 255, 255, 0.06);
+  --text-primary: #edf2ff;
+  --text-secondary: #a3adbf;
+  --accent: #6366f1;
+  --accent-end: #8b5cf6;
+  --input-bg: rgba(255,255,255,0.03);
+  --input-border: rgba(255,255,255,0.08);
+  --input-focus-shadow: rgba(99, 102, 241, 0.2);
+  --chip-bg: rgba(255,255,255,0.06);
+}
+
+body[data-theme="blue"] {
+  --bg-card: rgba(12, 20, 27, 0.94);
+  --bg-secondary: rgba(14, 22, 31, 0.96);
+  --titlebar-start: #1d2d3d;
+  --titlebar-end: #16212f;
+  --divider: rgba(255,255,255,0.08);
+  --text-primary: #edf8ff;
+  --text-secondary: #8dc2de;
+  --accent: #49bccf;
+  --accent-end: #22d3ee;
+  --input-bg: rgba(95, 171, 208, 0.06);
+  --input-border: rgba(120, 202, 230, 0.18);
+  --input-focus-shadow: rgba(73, 188, 207, 0.22);
+  --chip-bg: rgba(125, 183, 217, 0.08);
+}
+
+body[data-theme="light"] {
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-secondary: rgba(245,247,250,0.97);
+  --titlebar-start: #f5f7fb;
+  --titlebar-end: #ebeff7;
+  --divider: rgba(15, 23, 42, 0.08);
+  --text-primary: #111827;
+  --text-secondary: #5d6b82;
+  --accent: #3b82f6;
+  --accent-end: #1d4ed8;
+  --input-bg: rgba(15, 23, 42, 0.03);
+  --input-border: rgba(15, 23, 42, 0.12);
+  --input-focus-shadow: rgba(59, 130, 246, 0.16);
+  --chip-bg: rgba(15, 23, 42, 0.05);
+}

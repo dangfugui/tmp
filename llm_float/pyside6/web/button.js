@@ -29,6 +29,16 @@ function onMouseUp() {
   orb.classList.remove("dragging");
 }
 
+function sector(e) {
+  const rect = orb.getBoundingClientRect();
+  const dx = e.clientX - (rect.left + rect.width / 2);
+  const dy = e.clientY - (rect.top + rect.height / 2);
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx < 0 ? "left" : "right";
+  }
+  return dy < 0 ? "up" : "down";
+}
+
 orb.addEventListener("mousedown", (e) => {
   if (e.button !== 0) return;
   dragging = false;
@@ -38,9 +48,14 @@ orb.addEventListener("mousedown", (e) => {
   window.addEventListener("mouseup", onMouseUp);
 });
 
-orb.addEventListener("click", () => {
+orb.addEventListener("click", (e) => {
   if (dragging) {
     dragging = false;
+    return;
+  }
+  const direction = sector(e);
+  if (api && api.orb_action) {
+    api.orb_action(direction);
     return;
   }
   if (api && api.open_chat) api.open_chat();

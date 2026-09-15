@@ -1,0 +1,40 @@
+{
+  "orb_opacity": 0.75,
+  "theme": "blue",
+  "orb_size": 68,
+  "language": "zh",
+  "autostart": false,
+  "default_mode": "chat",
+  "base_url": "https://api.example.com/v1",
+  "api_key": "",
+  "model": "gpt-4o",
+  "system_prompt": "你是一个有用的桌面助手，回答尽量简洁。",
+  "temperature": 0.7,
+  "max_tokens": 2048,
+  "context_turns": 10,
+  "stream": true,
+  "tts_font_size": 18,
+  "tts_max_chars": 24,
+  "tts_lines": "2",
+  "tts_align": "center",
+  "tts_hold": 3,
+  "tts_auto_hide": true,
+  "asr_language": "auto",
+  "asr_engine": "whisper",
+  "asr_sample_rate": "16000",
+  "asr_show_interim": true,
+  "asr_silence": 3,
+  "asr_auto_punct": true,
+  "asr_devices": [
+    "默认麦克风"
+  ],
+  "hotkey_chat": "Ctrl+Alt+Space",
+  "hotkey_asr": "Ctrl+Alt+R",
+  "log_level": "INFO",
+  "data_dir": "./data",
+  "proxy": "",
+  "features": [
+    "chat",
+    "subtitle"
+  ]
+}

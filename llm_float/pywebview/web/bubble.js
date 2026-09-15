@@ -74,4 +74,18 @@ window.assistant = {
   onAsrState,
   onAsrPartial,
   onAsrFinal,
+  setTheme(payload) {
+    const theme = payload.theme;
+    document.body.dataset.theme = theme;
+    const gradientMap = {
+      dark: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 45%, #ec4899 100%)",
+      blue: "linear-gradient(135deg, #49bccf 0%, #63b3e8 45%, #22d3ee 100%)",
+      light: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 45%, #6366f1 100%)",
+    };
+    document.body.style.background = gradientMap[theme] || gradientMap.dark;
+  },
+  setOpacity(payload) {
+    const opacity = Math.max(0.2, Math.min(1.0, payload.opacity));
+    document.body.style.opacity = String(opacity);
+  },
 };

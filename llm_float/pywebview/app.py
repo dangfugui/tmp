@@ -533,6 +533,36 @@ class Api:
         self._bubble_mode = None  # "subtitle" | "asr" | None
         self._settings_data = copy.deepcopy(SETTINGS_SCHEMA)
 
+        data_dir = os.path.join(BASE_DIR, "data")
+        self._settings_data[0]["_data_dir"] = data_dir
+        os.makedirs(data_dir, exist_ok=True)
+
+        # Load saved settings from file for persistence across restarts.
+        # Support both the older nested schema format and the flat key/value JSON
+        # format produced by the current UI.
+        try:
+            save_path = os.path.join(data_dir, "settings.json")
+            if os.path.exists(save_path):
+                with open(save_path, "r", encoding="utf-8") as f:
+                    saved = json.load(f)
+
+                raw = saved if isinstance(saved, dict) else {}
+                if isinstance(saved, list):
+                    raw = {}
+                    for section in saved:
+                        for item in section.get("items", []):
+                            key = item.get("key")
+                            if key is not None:
+                                raw[key] = item.get("value")
+
+                for section in self._settings_data:
+                    for item in section["items"]:
+                        key = item["key"]
+                        if key in raw:
+                            item["value"] = raw[key]
+        except Exception:
+            pass
+
         self._tts_stop = threading.Event()
         self._tts_thread = None
         self._asr_stop = threading.Event()
@@ -617,6 +647,12 @@ class Api:
 
     def apply_theme(self, theme_key):
         """Push setTheme to all window bridges so CSS variables switch."""
+        if isinstance(theme_key, dict):
+            theme_key = theme_key.get("theme", theme_key.get("value", "dark"))
+        if not isinstance(theme_key, str):
+            theme_key = "dark"
+        theme_key = theme_key.strip() or "dark"
+
         for bridge in (self._orb_js, self._chat_js, self._settings_js, self._bubble_js):
             bridge.send("setTheme", {"theme": theme_key})
         # also update the orb's gradient per theme
@@ -657,6 +693,8 @@ class Api:
         Linux: pywebview's ``transparent=True`` already makes the WebView
         background transparent; we just store the value here.
         """
+        if isinstance(opacity, dict):
+            opacity = opacity.get("opacity", opacity.get("value", 1.0))
         opacity = max(0.2, min(1.0, float(opacity)))
         if not IS_WINDOWS:
             try:
@@ -667,7 +705,7 @@ class Api:
         # Windows path
         try:
             import ctypes
-            from ctypes import wintypes
+
             hwnd = getattr(self._orb, "native", None)
             if hwnd is None:
                 return
@@ -675,7 +713,10 @@ class Api:
             if hwnd is None:
                 return
             ctypes.windll.user32.SetLayeredWindowAttributes(
-                hwnd, 0, int(opacity * 255), 0x00000010  # LWA_ALPHA
+                hwnd,
+                0,
+                int(opacity * 255),
+                0x00000010,  # LWA_ALPHA
             )
         except Exception:
             pass
@@ -899,14 +940,47 @@ class Api:
         return copy.deepcopy(self._settings_data)
 
     def save_settings(self, values):
+        if isinstance(values, dict):
+            items = values.items()
+        else:
+            items = []
+
         for section in self._settings_data:
             for item in section["items"]:
-                if item["key"] in values:
-                    item["value"] = values[item["key"]]
+                key = item["key"]
+                for k, v in items:
+                    if k == key:
+                        item["value"] = v
+                        break
+
+        flat = {}
+        for section in self._settings_data:
+            for item in section["items"]:
+                key = item.get("key")
+                if key is not None:
+                    flat[key] = item.get("value")
+
+        try:
+            data_dir = self._settings_data[0].get("_data_dir", os.path.join(BASE_DIR, "data"))
+            os.makedirs(data_dir, exist_ok=True)
+            save_path = os.path.join(data_dir, "settings.json")
+            with open(save_path, "w", encoding="utf-8") as f:
+                json.dump(flat, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
         return True
 
     def reset_settings(self):
         self._settings_data = copy.deepcopy(SETTINGS_SCHEMA)
+        data_dir = os.path.join(BASE_DIR, "data")
+        self._settings_data[0]["_data_dir"] = data_dir
+        os.makedirs(data_dir, exist_ok=True)
+        save_path = os.path.join(data_dir, "settings.json")
+        try:
+            if os.path.exists(save_path):
+                os.remove(save_path)
+        except Exception:
+            pass
         return copy.deepcopy(self._settings_data)
 
 
