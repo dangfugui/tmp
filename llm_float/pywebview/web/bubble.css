@@ -1,0 +1,110 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: "Segoe UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei", system-ui, sans-serif;
+  color: var(--text-primary);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body { position: relative; }
+
+.pill-card {
+  width: 100%;
+  height: calc(100% - 12px);
+  border-radius: 18px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--divider);
+  overflow: hidden;
+}
+
+/* speech-bubble tail pointing down at the floating orb (see app.py TAIL_*) */
+body::after {
+  content: "";
+  position: absolute;
+  right: 19px;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-top: 14px solid var(--bg-card);
+}
+
+.mode { display: none; width: 100%; }
+.mode.active { display: block; }
+
+/* ---------- subtitle ---------- */
+#mode-sub {
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  text-align: center;
+}
+#mode-sub.active { display: flex; }
+
+.sub-prev {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sub-cur {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+  text-shadow: 0 2px 10px rgba(59, 130, 246, .45);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* ---------- asr ---------- */
+#mode-asr {
+  display: none;
+  align-items: center;
+  gap: 10px;
+}
+#mode-asr.active { display: flex; }
+
+.asr-dot {
+  flex: 0 0 auto;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: pulse-dot 1.4s infinite;
+}
+@keyframes pulse-dot {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .55); }
+  70% { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.asr-text {
+  flex: 1 1 auto;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.asr-text .interim { color: var(--text-secondary); }

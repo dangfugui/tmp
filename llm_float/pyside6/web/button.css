@@ -1,0 +1,46 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Segoe UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei", system-ui, sans-serif;
+}
+
+.orb {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border: none;
+  border-radius: 50%;
+  cursor: grab;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 45%, #ec4899 100%);
+  display: grid;
+  place-items: center;
+  transition: transform .18s ease;
+  outline: none;
+  padding: 0;
+}
+
+.orb:hover { transform: scale(1.08); }
+.orb:active { transform: scale(.94); cursor: grabbing; }
+
+.orb.dragging {
+  transform: none !important;
+  transition: none;
+  cursor: grabbing;
+}
+
+.icon { width: 27px; height: 27px; }

@@ -1,0 +1,98 @@
+/* ============================================================
+   Theme: CSS variables for dark / blue / light themes.
+   Each window’s <body data-theme="…"> selects the active palette.
+   Keep all per-window CSS files (chat.css, settings.css, etc.)
+   referring to these variables via var(--*).  Do NOT repeat
+   hardcoded hex colours here – keep them in the individual files
+   and only reference them with var().
+   ============================================================ */
+
+/* Default (dark) — matches the original colour scheme */
+:root {
+  --bg-primary: #14151c;
+  --bg-secondary: #171821;
+  --bg-tertiary: #1f2130;
+  --bg-card: #1e2130;
+  --text-primary: #e5e7eb;
+  --text-secondary: #d1d5db;
+  --accent: #6366f1;
+  --accent-end: #8b5cf6;
+  --orb-gradient-start: #6366f1;
+  --orb-gradient-end: #ec4899;
+  --orb-gradient-mid: #8b5cf6;
+  --user-bubble-start: #6366f1;
+  --user-bubble-end: #8b5cf6;
+  --bot-bubble: #202230;
+  --input-bg: #1f2130;
+  --input-border: rgba(255, 255, 255, .1);
+  --input-placeholder: #6b7280;
+  --input-focus-shadow: rgba(99, 102, 241, .18);
+  --divider: rgba(255, 255, 255, .06);
+  --chip-bg: rgba(255, 255, 255, .06);
+  --chip-hover: rgba(99, 102, 241, .18);
+  --status-dot: #22c55e;
+  --kbh-hover: rgba(255, 255, 255, .08);
+  --titlebar-start: #1b1c26;
+  --titlebar-end: #171821;
+  --border-subtle: rgba(255, 255, 255, .05);
+}
+
+/* Blue theme — teal / cyan palette from the orb colour blocks */
+[data-theme="blue"] {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #0f172a;
+  --bg-card: #1e2d48;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --accent: #49bccf;
+  --accent-end: #63b3e8;
+  --orb-gradient-start: #49bccf;
+  --orb-gradient-end: #63b3e8;
+  --orb-gradient-mid: #22d3ee;
+  --user-bubble-start: #49bccf;
+  --user-bubble-end: #63b3e8;
+  --bot-bubble: #1e2d48;
+  --input-bg: #0f172a;
+  --input-border: rgba(255, 255, 255, .12);
+  --input-placeholder: #94a3b8;
+  --input-focus-shadow: rgba(73, 164, 215, .2);
+  --divider: rgba(255, 255, 255, .08);
+  --chip-bg: rgba(73, 164, 215, .12);
+  --chip-hover: rgba(73, 164, 215, .18);
+  --status-dot: #22c55e;
+  --kbh-hover: rgba(255, 255, 255, .08);
+  --titlebar-start: #1e293b;
+  --titlebar-end: #0f172a;
+  --border-subtle: rgba(255, 255, 255, .08);
+}
+
+/* Light theme — clean, high-contrast */
+[data-theme="light"] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-tertiary: #e2e8f0;
+  --bg-card: #ffffff;
+  --text-primary: #0f172b;
+  --text-secondary: #64748b;
+  --accent: #3b82f6;
+  --accent-end: #1d4ed8;
+  --orb-gradient-start: #3b82f6;
+  --orb-gradient-end: #1d4ed8;
+  --orb-gradient-mid: #6366f1;
+  --user-bubble-start: #3b82f6;
+  --user-bubble-end: #1d4ed8;
+  --bot-bubble: #f1f5f9;
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-placeholder: #94a3b8;
+  --input-focus-shadow: rgba(59, 130, 246, .15);
+  --divider: rgba(0, 0, 0, .06);
+  --chip-bg: rgba(255, 255, 255, .8);
+  --chip-hover: rgba(59, 130, 246, .15);
+  --status-dot: #059669;
+  --kbh-hover: rgba(0, 0, 0, .06);
+  --titlebar-start: #f8fafc;
+  --titlebar-end: #f1f5f9;
+  --border-subtle: rgba(0, 0, 0, .08);
+}
