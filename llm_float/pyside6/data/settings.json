@@ -1,6 +1,6 @@
 {
-  "orb_opacity": 0.9,
-  "theme": "dark",
+  "orb_opacity": 1,
+  "theme": "light",
   "orb_size": 68,
   "language": "zh",
   "autostart": false,

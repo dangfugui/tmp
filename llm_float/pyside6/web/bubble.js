@@ -58,7 +58,8 @@ function onAsrPartial(payload) {
 }
 
 function onAsrFinal(payload) {
-  asrFinal = payload.text;
+  const text = payload && payload.text ? payload.text : '';
+  asrFinal = asrFinal ? `${asrFinal} ${text}` : text;
   renderAsr('');
 }
 
@@ -70,14 +71,15 @@ window.assistant = {
   onAsrPartial,
   onAsrFinal,
   setTheme(payload) {
-    const theme = payload && payload.theme ? payload.theme : 'dark';
+    const theme = payload && payload.theme === 'light' ? 'light' : 'dark';
     document.body.dataset.theme = theme;
     const gradientMap = {
       dark: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 45%, #ec4899 100%)',
-      blue: 'linear-gradient(135deg, #49bccf 0%, #63b3e8 45%, #22d3ee 100%)',
       light: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 45%, #6366f1 100%)',
     };
-    document.body.style.background = gradientMap[theme] || gradientMap.dark;
+    const gradient = gradientMap[theme] || gradientMap.dark;
+    document.body.style.background = gradient;
+    document.getElementById('card').style.background = gradient;
   },
   setOpacity(payload) {
     const opacity = Math.max(0.2, Math.min(1.0, Number(payload && payload.opacity !== undefined ? payload.opacity : 1)));

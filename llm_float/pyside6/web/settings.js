@@ -4,7 +4,7 @@ const FALLBACK_SETTINGS = [
     section: '基础',
     items: [
       { key: 'orb_opacity', label: '悬浮球透明度', type: 'number', value: 1.0, min: 0.2, max: 1.0, step: 0.05 },
-      { key: 'theme', label: '主题', type: 'select', value: 'dark', options: [['dark', '深色'], ['blue', '蓝色'], ['light', '浅色']] },
+      { key: 'theme', label: '主题', type: 'select', value: 'dark', options: [['dark', '深色'], ['light', '浅色']] },
       { key: 'orb_size', label: '悬浮球大小', type: 'number', value: 68, min: 40, max: 96, step: 1 },
       { key: 'autostart', label: '开机自启', type: 'bool', value: false },
     ],
@@ -224,6 +224,10 @@ function resetSettings() {
       renderSettings(normalized);
       const theme = normalized.flatMap(s => s.items || []).find(i => i.key === 'theme');
       if (theme) applyTheme(theme.value);
+      const opacity = normalized.flatMap(s => s.items || []).find(i => i.key === 'orb_opacity');
+      if (window.api && typeof window.api.apply_opacity === 'function' && opacity) {
+        window.api.apply_opacity({ opacity: opacity.value });
+      }
       showToast('已恢复默认');
       return;
     }
@@ -242,6 +246,18 @@ function resetSettings() {
 
 document.getElementById('set-save')?.addEventListener('click', saveSettings);
 document.getElementById('set-reset')?.addEventListener('click', resetSettings);
+document.addEventListener('change', (event) => {
+  if (event.target?.dataset?.key !== 'theme') return;
+  const theme = event.target.value === 'light' ? 'light' : 'dark';
+  applyTheme(theme);
+  const notify = () => {
+    if (window.api && typeof window.api.apply_theme === 'function') {
+      window.api.apply_theme({ theme });
+    }
+  };
+  if (window.qtReady) window.qtReady.then(notify);
+  else notify();
+});
 document.getElementById('btn-close')?.addEventListener('click', () => {
   if (window.api && typeof window.api.hide_settings === 'function') window.api.hide_settings();
 });

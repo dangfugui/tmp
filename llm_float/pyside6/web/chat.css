@@ -209,3 +209,69 @@ body { padding: 0; }
 .send:hover { filter: brightness(1.1); }
 .send:active { transform: scale(.93); }
 .send:disabled { opacity: .45; cursor: not-allowed; }
+
+body[data-theme="light"],
+body.theme-light {
+  color: #172033;
+}
+
+body[data-theme="light"] .card,
+body.theme-light .card {
+  background: #f7f9fc;
+}
+
+body[data-theme="light"] .titlebar,
+body.theme-light .titlebar {
+  background: linear-gradient(180deg, #f5f7fb 0%, #ebeff7 100%);
+  border-bottom-color: rgba(15, 23, 42, .08);
+}
+
+body[data-theme="light"] .status,
+body[data-theme="light"] .meta,
+body[data-theme="light"] .copy-btn,
+body.theme-light .status,
+body.theme-light .meta,
+body.theme-light .copy-btn {
+  color: #64748b;
+}
+
+body[data-theme="light"] .icon-btn,
+body.theme-light .icon-btn {
+  color: #64748b;
+}
+
+body[data-theme="light"] .icon-btn:hover,
+body.theme-light .icon-btn:hover {
+  background: rgba(15, 23, 42, .08);
+  color: #172033;
+}
+
+body[data-theme="light"] .msg.bot .bubble,
+body.theme-light .msg.bot .bubble {
+  background: #e9eef7;
+  border-color: rgba(15, 23, 42, .08);
+  color: #263449;
+}
+
+body[data-theme="light"] .composer,
+body.theme-light .composer {
+  background: #ebeff7;
+  border-top-color: rgba(15, 23, 42, .08);
+}
+
+body[data-theme="light"] #input,
+body.theme-light #input {
+  background: #fff;
+  border-color: rgba(15, 23, 42, .12);
+  color: #172033;
+}
+
+body[data-theme="light"] #input::placeholder,
+body.theme-light #input::placeholder {
+  color: #94a3b8;
+}
+
+body[data-theme="light"] .swatch,
+body.theme-light .swatch {
+  background: rgba(15, 23, 42, .06);
+}

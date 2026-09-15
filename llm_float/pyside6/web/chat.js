@@ -20,8 +20,19 @@ const MOCK_REPLIES = [
 let api = null;
 let busy = false;
 
+function applyChatTheme(theme) {
+  const isLight = theme === "light";
+  document.body.dataset.theme = isLight ? "light" : "dark";
+  document.body.classList.toggle("theme-light", isLight);
+}
+
 window.qtReady.then((bridge) => {
   api = bridge;
+  if (!api || typeof api.get_settings !== "function") return;
+  const data = api.get_settings();
+  const sections = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+  const theme = sections.flatMap((section) => section.items || []).find((item) => item.key === "theme");
+  if (theme) applyChatTheme(theme.value);
 });
 
 /* ---------- helpers ---------- */
@@ -176,6 +187,11 @@ function callApi(method) {
     console.warn("qt api not ready:", method);
   }
 }
+
+window.assistant = window.assistant || {};
+window.assistant.setTheme = function (payload) {
+  applyChatTheme(payload && payload.theme === "light" ? "light" : "dark");
+};
 
 document.getElementById("btn-close").addEventListener("click", () => callApi("hide_chat"));
 document.getElementById("btn-min").addEventListener("click", () => callApi("hide_chat"));

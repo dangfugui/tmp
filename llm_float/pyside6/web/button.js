@@ -11,6 +11,20 @@ window.qtReady.then((bridge) => {
   api = bridge;
 });
 
+window.assistant = window.assistant || {};
+window.assistant.setTheme = function (payload) {
+  const theme = payload && payload.theme === "light" ? "light" : "dark";
+  window.assistant.setOrbGradient(theme === "light"
+    ? { start: "#3b82f6", mid: "#6366f1", end: "#1d4ed8" }
+    : { start: "#6366f1", mid: "#8b5cf6", end: "#ec4899" });
+};
+window.assistant.setOrbGradient = function (payload) {
+  const start = payload && payload.start ? payload.start : "#6366f1";
+  const mid = payload && payload.mid ? payload.mid : "#8b5cf6";
+  const end = payload && payload.end ? payload.end : "#ec4899";
+  orb.style.background = `linear-gradient(135deg, ${start} 0%, ${mid} 50%, ${end} 100%)`;
+};
+
 /* ---------- drag vs click ---------- */
 function onMouseMove(e) {
   if (dragging) return;
