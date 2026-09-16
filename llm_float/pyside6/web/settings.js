@@ -38,7 +38,7 @@ function showToast(msg, timeout = 1600) {
 }
 
 function applyTheme(theme) {
-  document.body.dataset.theme = theme || 'dark';
+  document.body.dataset.theme = theme || 'flat';
 }
 
 function prepareField(item) {
@@ -194,7 +194,7 @@ function saveSettings() {
       if (ok) {
         showToast('保存成功');
         localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
-        const theme = values.theme || 'dark';
+        const theme = values.theme || 'flat';
         applyTheme(theme);
         if (window.api && typeof window.api.apply_theme === 'function') {
           window.api.apply_theme(theme);
@@ -248,7 +248,7 @@ document.getElementById('set-save')?.addEventListener('click', saveSettings);
 document.getElementById('set-reset')?.addEventListener('click', resetSettings);
 document.addEventListener('change', (event) => {
   if (event.target?.dataset?.key !== 'theme') return;
-  const theme = event.target.value === 'light' ? 'light' : 'dark';
+  const theme = event.target.value || 'flat';
   applyTheme(theme);
   const notify = () => {
     if (window.api && typeof window.api.apply_theme === 'function') {

@@ -13,10 +13,13 @@ window.qtReady.then((bridge) => {
 
 window.assistant = window.assistant || {};
 window.assistant.setTheme = function (payload) {
-  const theme = payload && payload.theme === "light" ? "light" : "dark";
-  window.assistant.setOrbGradient(theme === "light"
-    ? { start: "#3b82f6", mid: "#6366f1", end: "#1d4ed8" }
-    : { start: "#6366f1", mid: "#8b5cf6", end: "#ec4899" });
+  const theme = payload && payload.theme ? payload.theme : "dark";
+  document.body.dataset.theme = theme;
+};
+/* 悬浮球大小（px）：驱动图标与提示按比例缩放 */
+window.assistant.setOrbSize = function (payload) {
+  const size = payload && payload.size ? Number(payload.size) : 68;
+  document.documentElement.style.setProperty("--orb-size", size + "px");
 };
 window.assistant.setOrbGradient = function (payload) {
   const start = payload && payload.start ? payload.start : "#6366f1";

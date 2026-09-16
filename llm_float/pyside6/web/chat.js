@@ -21,9 +21,7 @@ let api = null;
 let busy = false;
 
 function applyChatTheme(theme) {
-  const isLight = theme === "light";
-  document.body.dataset.theme = isLight ? "light" : "dark";
-  document.body.classList.toggle("theme-light", isLight);
+  document.body.dataset.theme = theme || "flat";
 }
 
 window.qtReady.then((bridge) => {
@@ -190,7 +188,7 @@ function callApi(method) {
 
 window.assistant = window.assistant || {};
 window.assistant.setTheme = function (payload) {
-  applyChatTheme(payload && payload.theme === "light" ? "light" : "dark");
+  applyChatTheme(payload && payload.theme ? payload.theme : "dark");
 };
 
 document.getElementById("btn-close").addEventListener("click", () => callApi("hide_chat"));

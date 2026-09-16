@@ -3,33 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <title>AI</title>
+  <link rel="stylesheet" href="theme.css" />
   <link rel="stylesheet" href="button.css" />
 </head>
 <body>
-  <button class="orb" id="orb" aria-label="打开 AI 助手">
-    <!-- ASR 语音识别中 -->
-    <span class="fx fx-asr">
-      <i class="ring r1"></i><i class="ring r2"></i>
-      <i class="wave w1"></i><i class="wave w2"></i><i class="wave w3"></i><i class="wave w4"></i><i class="wave w5"></i>
+  <button class="orb" id="orb" data-state="idle" aria-label="打开 AI 助手">
+    <!-- 玻璃质感高光层 -->
+    <span class="glass"></span>
+
+    <!-- ===== 五态图标（idle 静默 / chat 聊天 / settings 设置 / tts 字幕 / asr 识别）===== -->
+    <span class="state-icon icon-idle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/>
+        <path d="M19 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z"/>
+      </svg>
     </span>
-    <!-- TTS 语音播报中 -->
-    <span class="fx fx-tts">
-      <i class="note n1"></i><i class="note n2"></i><i class="note n3"></i><i class="note n4"></i>
+    <span class="state-icon icon-chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+        <path d="M8.5 10.5h7M8.5 13.5h4.5"/>
+      </svg>
     </span>
-    <!-- 聊天页面 -->
-    <span class="fx fx-chat">
-      <i class="bubble"></i>
+    <span class="state-icon icon-settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3.2"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
     </span>
-    <!-- 设置页面 -->
-    <span class="fx fx-settings">
-      <i class="gear"></i>
-      <i class="dot d1"></i><i class="dot d2"></i><i class="dot d3"></i>
+    <span class="state-icon icon-tts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 5 6 9H2v6h4l5 4V5z"/>
+        <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a9 9 0 0 1 0 12"/>
+      </svg>
     </span>
-    <!-- 基础图标（idle 状态） -->
-    <svg class="icon icon-idle" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-    </svg>
+    <span class="state-icon icon-asr">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="2.5" width="6" height="11" rx="3"/>
+        <path d="M5 10.5a7 7 0 0 0 14 0M12 17.5v3.5M8.5 21h7"/>
+      </svg>
+    </span>
+
+    <!-- ===== 状态动效层 ===== -->
+    <span class="fx fx-asr"><i class="ring r1"></i><i class="ring r2"></i></span>
+    <span class="fx fx-tts"><i class="note n1"></i><i class="note n2"></i><i class="note n3"></i></span>
+
+    <!-- ===== 四方向操作提示（hover 时浮现）===== -->
+    <span class="hint hint-up"><svg viewBox="0 0 12 8"><path d="M6 0L12 8H0z"/></svg></span>
+    <span class="hint hint-down"><svg viewBox="0 0 12 8"><path d="M6 8L12 0H0z"/></svg></span>
+    <span class="hint hint-left"><svg viewBox="0 0 8 12"><path d="M0 6L8 0V12z"/></svg></span>
+    <span class="hint hint-right"><svg viewBox="0 0 8 12"><path d="M8 6L0 0V12z"/></svg></span>
   </button>
   <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
   <script src="bridge.js"></script>

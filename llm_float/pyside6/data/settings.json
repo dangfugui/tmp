@@ -1,7 +1,7 @@
 {
-  "orb_opacity": 1,
-  "theme": "dark",
-  "orb_size": 68,
+  "orb_opacity": 11,
+  "theme": "neon",
+  "orb_size": 66,
   "language": "zh",
   "autostart": false,
   "default_mode": "chat",

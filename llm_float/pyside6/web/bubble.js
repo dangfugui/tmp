@@ -12,6 +12,7 @@ function setMode(payload) {
   currentMode = payload && payload.mode ? payload.mode : 'subtitle';
   modeSub.classList.toggle('active', currentMode === 'subtitle');
   modeAsr.classList.toggle('active', currentMode === 'asr');
+  document.body.dataset.mode = currentMode === 'asr' ? 'asr' : 'subtitle';
 
   if (currentMode === 'subtitle') {
     subPrev.textContent = '';
@@ -71,15 +72,8 @@ window.assistant = {
   onAsrPartial,
   onAsrFinal,
   setTheme(payload) {
-    const theme = payload && payload.theme === 'light' ? 'light' : 'dark';
+    const theme = payload && payload.theme ? payload.theme : 'dark';
     document.body.dataset.theme = theme;
-    const gradientMap = {
-      dark: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 45%, #ec4899 100%)',
-      light: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 45%, #6366f1 100%)',
-    };
-    const gradient = gradientMap[theme] || gradientMap.dark;
-    document.body.style.background = gradient;
-    document.getElementById('card').style.background = gradient;
   },
   setOpacity(payload) {
     const opacity = Math.max(0.2, Math.min(1.0, Number(payload && payload.opacity !== undefined ? payload.opacity : 1)));

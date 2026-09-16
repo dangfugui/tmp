@@ -184,7 +184,7 @@ class WebWindow(QWidget):
             painter.drawRoundedRect(0, 0, self.width(), self.height(), radius, radius)
             painter.end()
             self.setMask(mask)
-            self.view.setStyleSheet("border: 0; border-radius: 22px; background: transparent;")
+            self.view.setStyleSheet(f"border: 0; border-radius: {self.shape_radius}px; background: transparent;")
 
 
 def work_area():

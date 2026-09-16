@@ -23,12 +23,15 @@ ORB_SIZE, BUTTON_WIN, MARGIN = 68, 120, 22
 CHAT_W, CHAT_H = 400, 620
 SETTINGS_W, SETTINGS_H = 420, 760
 BUBBLE_W, BUBBLE_H = 340, 88
-CHAT_RADIUS, GAP, TAIL_H = 16, 4, 12
+CHAT_RADIUS, SETTINGS_RADIUS, BUBBLE_RADIUS = 20, 18, 22
+GAP, TAIL_H = 4, 12
 PALETTE = [
     {"title": "主色调", "colors": ["#49BCCF", "#5BC2D3", "#45C1D6", "#00BCDC", "#40A8BD", "#AEF3FF"]},
     {"title": "点缀色", "colors": ["#2C3E50", "#3373B8"]},
     {"title": "中性色", "colors": ["#FFFFFF", "#AFAFAF", "#848383", "#656565", "#555555", "#525252", "#474747", "#313131", "#282828"]},
 ]
+
+VALID_THEMES = ("flat", "neon", "synthwave")
 
 
 def page(name):
@@ -46,31 +49,33 @@ class OverlayHost:
         self.on_subtitle = on_subtitle
         self.on_asr = on_asr
         self.on_bubble_hide = on_bubble_hide
+        self._orb_size = int(self.settings_store.value("orb_size", ORB_SIZE))
 
     def start(self):
         if self.orb is not None:
             return self.orb
         geo = work_area()
-        inset = (BUTTON_WIN - ORB_SIZE) // 2
-        self.orb = WebWindow(self, "float-button", page("button.html"), BUTTON_WIN, BUTTON_WIN, shape="ellipse", size=ORB_SIZE)
+        inset = (BUTTON_WIN - self._orb_size) // 2
+        self.orb = WebWindow(self, "float-button", page("button.html"), BUTTON_WIN, BUTTON_WIN, shape="ellipse", size=self._orb_size)
         self.orb.move(geo.x() + geo.width() - BUTTON_WIN - MARGIN + inset, geo.y() + geo.height() - BUTTON_WIN - MARGIN + inset)
         self.orb.setWindowOpacity(1.0)
         self.orb.show()
         QTimer.singleShot(200, lambda: self.apply_theme(self.current_theme()))
+        QTimer.singleShot(250, lambda: self.apply_opacity(self.settings_store.value("orb_opacity", 1.0)))
         return self.orb
 
     def _orb_origin(self):
         if self.orb is not None:
             return int(self.orb.x()), int(self.orb.y())
         geo = work_area()
-        inset = (BUTTON_WIN - ORB_SIZE) // 2
+        inset = (BUTTON_WIN - self._orb_size) // 2
         return geo.x() + geo.width() - BUTTON_WIN - MARGIN + inset, geo.y() + geo.height() - BUTTON_WIN - MARGIN + inset
 
     def _anchor_above(self, width, height):
         ox, oy = self._orb_origin()
-        inset = (BUTTON_WIN - ORB_SIZE) // 2
+        inset = (BUTTON_WIN - self._orb_size) // 2
         geo = work_area()
-        return min(ox + inset + ORB_SIZE - width, geo.x() + geo.width() - width - 4), max(8, oy + inset - GAP - height - TAIL_H)
+        return min(ox + inset + self._orb_size - width, geo.x() + geo.width() - width - 4), max(8, oy + inset - GAP - height - TAIL_H)
 
     def _hide_others(self, keep):
         if keep != "chat" and self.chat is not None: self.chat.hide()
@@ -105,7 +110,7 @@ class OverlayHost:
         height = min(SETTINGS_H, max(420, work_area().height() - 32))
         x, y = self._anchor_above(SETTINGS_W, height + TAIL_H)
         if self.settings is None:
-            self.settings = WebWindow(self, "assistant-settings", page("settings.html"), SETTINGS_W, height + TAIL_H, radius=CHAT_RADIUS)
+            self.settings = WebWindow(self, "assistant-settings", page("settings.html"), SETTINGS_W, height + TAIL_H, radius=SETTINGS_RADIUS)
         else: self.settings.resize(SETTINGS_W, height + TAIL_H)
         self.settings.show()
         self.settings.move(x, y)
@@ -115,7 +120,7 @@ class OverlayHost:
     def _ensure_bubble(self):
         x, y = self._anchor_above(BUBBLE_W, BUBBLE_H + TAIL_H)
         if self.bubble is None:
-            self.bubble = WebWindow(self, "assistant-bubble", page("bubble.html"), BUBBLE_W, BUBBLE_H + TAIL_H, radius=28)
+            self.bubble = WebWindow(self, "assistant-bubble", page("bubble.html"), BUBBLE_W, BUBBLE_H + TAIL_H, radius=BUBBLE_RADIUS)
         self.bubble.show()
         self.bubble.move(x, y)
         self.bubble.send_js("setMode", {"mode": self._bubble_mode or "subtitle"})
@@ -147,26 +152,50 @@ class OverlayHost:
         if direction in actions: actions[direction]()
 
     def current_theme(self):
-        value = self.settings_store.value("theme", "dark")
-        return value if value in ("dark", "light") else "dark"
+        value = self.settings_store.value("theme", "flat")
+        return value if value in VALID_THEMES else "flat"
     def get_settings(self): return self.settings_store.get()
     def save_settings(self, values):
         if not self.settings_store.save(values): return False
         if "theme" in values: self.apply_theme(values["theme"])
         if "orb_opacity" in values: self.apply_opacity(values["orb_opacity"])
+        if "orb_size" in values: self.apply_orb_size(values["orb_size"])
         return True
     def reset_settings(self):
-        data = self.settings_store.reset(); self.apply_theme("dark"); self.apply_opacity(1.0); return data
+        data = self.settings_store.reset(); self.apply_theme("flat"); self.apply_opacity(1.0); self.apply_orb_size(ORB_SIZE); return data
     def apply_theme(self, theme):
-        theme = theme.get("theme", "dark") if isinstance(theme, dict) else theme
-        theme = theme if theme in ("dark", "light") else "dark"
+        theme = theme.get("theme", "flat") if isinstance(theme, dict) else theme
+        theme = theme if theme in VALID_THEMES else "flat"
         for window in (self.orb, self.chat, self.settings, self.bubble):
             if window is not None: window.send_js("setTheme", {"theme": theme})
     def apply_opacity(self, opacity):
         opacity = opacity.get("opacity", 1.0) if isinstance(opacity, dict) else opacity
         opacity = max(0.2, min(1.0, float(opacity)))
-        if self.orb is not None:
-            self.orb.setWindowOpacity(opacity); self.orb.send_js("setOpacity", {"opacity": opacity})
+        for window in (self.orb, self.chat, self.settings, self.bubble):
+            if window is not None:
+                window.setWindowOpacity(opacity)
+
+    def apply_orb_size(self, size):
+        """按设置重建悬浮球窗口（大小 40-96px），并保持右下角贴边与主题/透明度。"""
+        try:
+            size = max(40, min(96, int(size)))
+        except (TypeError, ValueError):
+            size = ORB_SIZE
+        self._orb_size = size
+        if self.orb is None:
+            return
+        old = self.orb
+        geo = work_area()
+        inset = (BUTTON_WIN - self._orb_size) // 2
+        self.orb = WebWindow(self, "float-button", page("button.html"), BUTTON_WIN, BUTTON_WIN, shape="ellipse", size=self._orb_size)
+        self.orb.move(geo.x() + geo.width() - BUTTON_WIN - MARGIN + inset, geo.y() + geo.height() - BUTTON_WIN - MARGIN + inset)
+        self.orb.show()
+        self.orb.send_js("setOrbSize", {"size": self._orb_size})
+        self.apply_theme(self.current_theme())
+        self.apply_opacity(self.settings_store.value("orb_opacity", 1.0))
+        if self._active:
+            self._set_active(self._active)
+        old.deleteLater()
     def chat_send(self, text): return self.chat_handler(text)
     def _safe_send(self, window, name, payload):
         if window is not None: self._ui_scheduler.schedule(window, name, payload)
