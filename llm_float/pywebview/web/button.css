@@ -1,4 +1,4 @@
-* { box-sizing: border-html; }
+* { box-sizing: border-box; }
 
 html, body {
   margin: 0;
@@ -31,7 +31,7 @@ body {
   background: var(--orb-gradient-start) 0%, var(--orb-gradient-end) 100%;
   display: grid;
   place-items: center;
-  transition: transform .18s ease;
+  transition: transform .18s ease, background .3s ease;
   outline: none;
   padding: 0;
 }
@@ -51,4 +51,115 @@ body {
               inset 0 0 16px rgba(255, 255, 255, .28);
 }
 
-.icon { width: 27px; height: 27px; }
+.icon { width: 27px; height: 27px; position: relative; z-index: 5; }
+
+/* ---------- 四态特效层 ---------- */
+.fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .35s ease;
+}
+.orb[data-state="asr"] .fx-asr,
+.orb[data-state="tts"] .fx-tts,
+.orb[data-state="chat"] .fx-chat,
+.orb[data-state="settings"] .fx-settings { opacity: 1; }
+.orb[data-state] .icon-idle { opacity: 0; }
+
+/* 只有没有显式坐标的元素，用 margin:auto 在绝对定位容器里居中 */
+.fx-chat .bubble,
+.fx-settings .gear {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+/* ===== 状态 1：ASR 语音识别中（青绿 + 声波扩散）===== */
+.orb[data-state="asr"] { background: radial-gradient(circle at 35% 30%, #5eead4 0%, #14b8a6 45%, #0f766e 100%); }
+.fx-asr .ring {
+  position: absolute; inset: -4px; border-radius: 50%;
+  border: 3px solid rgba(45, 212, 191, .85);
+  opacity: 0;
+  animation: asrPing 1.6s cubic-bezier(0, .6, .4, 1) infinite;
+}
+.fx-asr .ring.r2 { animation-delay: .8s; }
+@keyframes asrPing {
+  0% { transform: scale(.9); opacity: .9; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+.fx-asr .wave {
+  position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+}
+.fx-asr .wave i {
+  position: absolute; left: -1.5px; bottom: 0; width: 3px; border-radius: 2px;
+  background: rgba(255, 255, 255, .92);
+  animation: asrWave 1s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+.fx-asr .wave.w1 i { height: 8px; animation-delay: 0s; }
+.fx-asr .wave.w2 i { height: 16px; animation-delay: .12s; }
+.fx-asr .wave.w3 i { height: 24px; animation-delay: .24s; }
+.fx-asr .wave.w4 i { height: 16px; animation-delay: .36s; }
+.fx-asr .wave.w5 i { height: 8px; animation-delay: .48s; }
+.fx-asr .wave.w1 { transform: translate(-14px, -6px); }
+.fx-asr .wave.w2 { transform: translate(-7px, -10px); }
+.fx-asr .wave.w3 { transform: translate(0, -14px); }
+.fx-asr .wave.w4 { transform: translate(7px, -10px); }
+.fx-asr .wave.w5 { transform: translate(14px, -6px); }
+@keyframes asrWave {
+  0%, 100% { transform: scaleY(.4); opacity: .5; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+/* ===== 状态 2：TTS 语音播报中（玫红 + 音量脉冲 + 音符）===== */
+.orb[data-state="tts"] { background: radial-gradient(circle at 35% 30%, #fda4af 0%, #f43f5e 45%, #be123c 100%); animation: ttsPulse 1.4s ease-in-out infinite; }
+@keyframes ttsPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+.fx-tts .note {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255, 180, 190, .9); opacity: 0;
+  animation: ttsNote 1.4s ease-out infinite;
+}
+.fx-tts .note.n1 { top: 18%; left: 30%; animation-delay: 0s; }
+.fx-tts .note.n2 { top: 10%; left: 52%; animation-delay: .3s; }
+.fx-tts .note.n3 { top: 22%; right: 26%; animation-delay: .6s; }
+.fx-tts .note.n4 { top: 34%; right: 14%; animation-delay: .9s; }
+@keyframes ttsNote {
+  0% { transform: translateY(0) scale(.5); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translateY(-26px) scale(1.4); opacity: 0; }
+}
+
+/* ===== 状态 3：聊天页面（蓝色 + 浮动气泡）===== */
+.orb[data-state="chat"] { background: radial-gradient(circle at 35% 30%, #93c5fd 0%, #3b82f6 45%, #1d4ed8 100%); }
+.fx-chat .bubble {
+  position: absolute; width: 40px; height: 30px; border-radius: 14px;
+  background: rgba(255, 255, 255, .95);
+  animation: chatBob 2.2s ease-in-out infinite;
+}
+.fx-chat .bubble::before {
+  content: ""; position: absolute; left: 9px; top: 9px; right: 9px; height: 3px; border-radius: 2px;
+  background: #3b82f6; opacity: .7;
+}
+.fx-chat .bubble::after {
+  content: ""; position: absolute; bottom: -5px; left: 8px;
+  border: 6px solid transparent; border-top-color: rgba(255, 255, 255, .95); border-left: 0;
+}
+@keyframes chatBob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.05); } }
+
+/* ===== 状态 4：设置页面（紫色 + 旋转齿轮 + 黄点）===== */
+.orb[data-state="settings"] { background: radial-gradient(circle at 35% 30%, #c4b5fd 0%, #8b5cf6 45%, #6d28d9 100%); }
+.fx-settings .gear {
+  position: absolute; width: 26px; height: 26px; border-radius: 50%;
+  border: 3px dotted rgba(255, 255, 255, .9);
+  animation: gearSpin 4s linear infinite;
+}
+.fx-settings .dot {
+  position: absolute; width: 5px; height: 5px; border-radius: 50%;
+  background: #fbbf24; animation: gearDot 2s ease-in-out infinite;
+}
+.fx-settings .dot.d1 { top: 14%; left: 20%; }
+.fx-settings .dot.d2 { top: 30%; right: 16%; animation-delay: .5s; }
+.fx-settings .dot.d3 { bottom: 20%; left: 34%; animation-delay: 1s; }
+@keyframes gearSpin { to { transform: rotate(360deg); } }
+@keyframes gearDot { 0%, 100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.3); } }

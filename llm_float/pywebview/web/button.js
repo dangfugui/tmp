@@ -66,6 +66,14 @@ window.assistant = {
   setActive(payload) {
     orb.classList.toggle("active", !!(payload && payload.active));
   },
+  /* New: switch the orb's visual state to match the active panel.
+   * state: "idle" | "chat" | "settings" | "tts" | "asr" */
+  setOrbState(payload) {
+    const state = payload && payload.state;
+    if (["idle", "chat", "settings", "tts", "asr"].includes(state)) {
+      orb.dataset.state = state;
+    }
+  },
   setTheme(payload) {
     const theme = payload.theme;
     document.body.dataset.theme = theme;

@@ -2,6 +2,7 @@ import copy
 import json
 import os
 import random
+import shutil
 import sys
 import threading
 import time
@@ -16,6 +17,30 @@ WEB_DIR = os.path.join(BASE_DIR, "web")
 IS_WINDOWS = sys.platform.startswith("win")
 # Optional override on Linux: LLM_FLOAT_GUI=qt|gtk|cef (empty = let pywebview pick)
 GUI_BACKEND = os.environ.get("LLM_FLOAT_GUI") or None
+
+
+def _clear_webview2_cache():
+    """Clear WebView2 user data to avoid stale HTML/CSS/JS cache on Windows."""
+    if not IS_WINDOWS:
+        return
+    # Common WebView2 user data locations
+    cache_dirs = [
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WebView2"),
+        os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "WebView2"),
+        # pywebview default data directory
+        os.path.join(BASE_DIR, "webview2_data"),
+    ]
+    for d in cache_dirs:
+        if os.path.isdir(d):
+            try:
+                shutil.rmtree(d, ignore_errors=True)
+                print(f"[cache] cleared: {d}")
+            except Exception as e:
+                print(f"[cache] failed to clear {d}: {e}")
+
+
+# Clear cache before any webview window is created
+_clear_webview2_cache()
 
 ORB_SIZE = 68
 BUTTON_WIN = 120  # Windows enforces a minimum tracking width of ~120px
@@ -641,9 +666,17 @@ class Api:
             self._bubble_js.hide()
 
     def _set_active(self, which):
-        """Tell the orb to light up while a panel is attached to it."""
+        """Tell the orb to light up + show matching animation while a panel is attached."""
         self._active = which
         self._orb_js.send("setActive", {"active": which is not None})
+        # Map panel -> orb visual state (four animated states)
+        state_map = {
+            "chat": "chat",
+            "settings": "settings",
+            "bubble": "tts" if self._bubble_mode == "subtitle" else "asr",
+            None: "idle",
+        }
+        self._orb_js.send("setOrbState", {"state": state_map.get(which, "idle")})
 
     def apply_theme(self, theme_key):
         """Push setTheme to all window bridges so CSS variables switch."""
@@ -995,6 +1028,8 @@ def main():
     api = Api(geo=(right, bottom))
 
     inset = (BUTTON_WIN - ORB_SIZE) // 2
+    # 增加裁剪区域到 80px，给 CSS scale(1.08/1.07) 留出余量，避免动画被裁切
+    ORB_CLIP_SIZE = 80
     orb = apply_shape(
         webview.create_window(
             "float-button",
@@ -1013,14 +1048,17 @@ def main():
             shadow=False,
         ),
         shape="ellipse",
-        size=ORB_SIZE,
+        size=ORB_CLIP_SIZE,
     )
     api._orb = orb  # panels anchor to the orb and follow it when dragged
     api._orb_js.adopt(orb)
     # keep any open panel glued to the orb while the orb is being dragged
     orb.events.moved += lambda x, y: api._on_orb_moved(x, y)
 
-    webview.start(debug=True, gui=GUI_BACKEND)  # type: ignore[arg-type]
+    webview.start(debug=True, gui=GUI_BACKEND,
+                  # Disable WebView2 cache for development
+                  storage_path=os.path.join(BASE_DIR, "webview2_data"),
+                  http_port=0)  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

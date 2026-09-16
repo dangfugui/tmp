@@ -24,6 +24,14 @@ window.assistant.setOrbGradient = function (payload) {
   const end = payload && payload.end ? payload.end : "#ec4899";
   orb.style.background = `linear-gradient(135deg, ${start} 0%, ${mid} 50%, ${end} 100%)`;
 };
+/* New: switch the orb's visual state to match the active panel.
+ * state: "idle" | "chat" | "settings" | "tts" | "asr" */
+window.assistant.setOrbState = function (payload) {
+  const state = payload && payload.state;
+  if (["idle", "chat", "settings", "tts", "asr"].includes(state)) {
+    orb.dataset.state = state;
+  }
+};
 
 /* ---------- drag vs click ---------- */
 function onMouseMove(e) {

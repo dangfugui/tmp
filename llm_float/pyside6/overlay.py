@@ -80,7 +80,16 @@ class OverlayHost:
 
     def _set_active(self, value):
         self._active = value
-        if self.orb is not None: self.orb.send_js("setActive", {"active": value is not None})
+        if self.orb is not None:
+            self.orb.send_js("setActive", {"active": value is not None})
+            # Map panel -> orb visual state (four animated states)
+            state_map = {
+                "chat": "chat",
+                "settings": "settings",
+                "bubble": "tts" if self._bubble_mode == "subtitle" else "asr",
+                None: "idle",
+            }
+            self.orb.send_js("setOrbState", {"state": state_map.get(value, "idle")})
 
     def _ensure_chat(self):
         x, y = self._anchor_above(CHAT_W, CHAT_H + TAIL_H)

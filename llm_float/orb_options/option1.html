@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Orb Option 1</title>
+<style>
+  body { margin:0; height:100vh; display:flex; align-items:center; justify-content:center; background:#0b0f1a; }
+  .orb {
+    width:68px; height:68px;
+    border-radius:50%;
+    background: radial-gradient(circle at 30% 30%, #6366f1, #4f46e5);
+    position:relative;
+    overflow:hidden;
+  }
+  .orb::after {
+    content:"";
+    position:absolute; inset:0;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.15), transparent 70%);
+    pointer-events:none;
+  }
+</style>
+</head>
+<body>
+<div class="orb"></div>
+</body>
+</html>

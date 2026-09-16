@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Orb Option 2</title>
+<style>
+  body { margin:0; height:100vh; display:flex; align-items:center; justify-content:center; background:#0b0f1a; }
+  .orb {
+    width:68px; height:68px;
+    border-radius:50%;
+    background: #1e293b;
+    border:2px solid #3b82f6;
+    position:relative;
+    overflow:hidden;
+  }
+  .mic {
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:24px; height:24px;
+  }
+  .mic line, .mic path { stroke:#fff; stroke-width:2; fill:none; }
+  .mic circle { fill:#fff; }
+</style>
+</head>
+<body>
+<div class="orb">
+  <svg class="mic" viewBox="0 0 24 24">
+    <rect x="9" y="3" width="6" height="11" rx="3"/>
+    <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+  </svg>
+</div>
+</body>
+</html>
