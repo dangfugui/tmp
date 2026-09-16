@@ -8,7 +8,7 @@ SETTINGS_SCHEMA = [
         "section": "基础",
         "items": [
             {"key": "orb_opacity", "label": "悬浮球透明度", "type": "number", "value": 1.0, "min": 0.2, "max": 1.0, "step": 0.05},
-            {"key": "theme", "label": "主题", "type": "select", "value": "flat", "options": [("flat", "极简扁平"), ("neon", "霓虹赛博"), ("synthwave", "复古合成波")]},
+            {"key": "theme", "label": "主题", "type": "select", "value": "flat", "options": [("flat", "极简扁平"), ("neon", "霓虹赛博"), ("synthwave", "复古合成波"), ("glass", "液态玻璃"), ("macaron", "马卡龙奶油")]},
             {"key": "orb_size", "label": "悬浮球大小", "type": "number", "value": 68, "min": 40, "max": 96, "step": 1},
             {"key": "language", "label": "界面语言", "type": "select", "value": "zh", "options": [("zh", "简体中文"), ("en", "English")]},
             {"key": "autostart", "label": "开机自启", "type": "bool", "value": False},

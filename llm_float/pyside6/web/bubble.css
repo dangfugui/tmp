@@ -51,6 +51,8 @@ body[data-theme="light"] { --bubble-glow: rgba(79, 107, 246, .32); }
 body[data-theme="flat"] { --bubble-glow: rgba(99, 102, 241, .32); }
 body[data-theme="neon"] { --bubble-glow: rgba(34, 211, 238, .5); }
 body[data-theme="synthwave"] { --bubble-glow: rgba(168, 85, 247, .45); }
+body[data-theme="glass"] { --bubble-glow: rgba(109, 124, 255, .42); }
+body[data-theme="macaron"] { --bubble-glow: rgba(255, 179, 193, .45); }
 
 body[data-mode="asr"] {
   --bubble-glow: rgba(52, 211, 153, .5);
@@ -84,9 +86,9 @@ body[data-theme="synthwave"][data-mode="asr"] { --bubble-glow: rgba(74, 222, 128
 .sub-cur {
   font-size: 17px;
   font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   letter-spacing: .02em;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .28);
 }
@@ -117,9 +119,9 @@ body[data-theme="synthwave"][data-mode="asr"] { --bubble-glow: rgba(74, 222, 128
   flex: 0 1 auto;
   font-size: 16px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .28);
 }
 .interim { opacity: .8; }

@@ -246,6 +246,12 @@ function resetSettings() {
 
 document.getElementById('set-save')?.addEventListener('click', saveSettings);
 document.getElementById('set-reset')?.addEventListener('click', resetSettings);
+document.getElementById('set-tts-demo')?.addEventListener('click', () => {
+  if (window.api && typeof window.api.tts_demo === 'function') window.api.tts_demo();
+});
+document.getElementById('set-asr-demo')?.addEventListener('click', () => {
+  if (window.api && typeof window.api.asr_demo === 'function') window.api.asr_demo();
+});
 document.addEventListener('change', (event) => {
   if (event.target?.dataset?.key !== 'theme') return;
   const theme = event.target.value || 'flat';
@@ -259,7 +265,7 @@ document.addEventListener('change', (event) => {
   else notify();
 });
 document.getElementById('btn-close')?.addEventListener('click', () => {
-  if (window.api && typeof window.api.hide_settings === 'function') window.api.hide_settings();
+  if (window.api && typeof window.api.hide_all === 'function') window.api.hide_all();
 });
 document.getElementById('set-quit')?.addEventListener('click', () => {
   if (window.api && typeof window.api.quit === 'function') window.api.quit();

@@ -19,7 +19,7 @@ def run_demo():
     time.sleep(1)
     overlay.push_asr_partial("Hello, ")
     time.sleep(1)
-    overlay.push_asr_partial("Hello, 你好")
+    overlay.push_asr_partial("Hello, 你好嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻嘻")
     time.sleep(1)
     overlay.set_asr_state("idle")
     time.sleep(1)

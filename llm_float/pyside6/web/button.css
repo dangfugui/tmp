@@ -194,29 +194,32 @@ body[data-theme="synthwave"] .orb[data-state="idle"] { animation: glowPulse 2.6s
   transition: opacity .35s ease;
 }
 
-/* ---------- 四方向操作提示（hover 浮现） ---------- */
-.hint {
+/* ---------- 操作提示（hover 浮现） ---------- */
+.hint-label {
   position: absolute;
-  width: 12px;
-  height: 10px;
-  display: grid;
-  place-items: center;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%) translateY(2px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(15, 18, 26, .84);
+  border: 1px solid rgba(255, 255, 255, .14);
+  color: rgba(255, 255, 255, .72);
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
   opacity: 0;
-  transition: opacity .22s ease, transform .22s ease;
   pointer-events: none;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45));
+  transition: opacity .22s ease, transform .22s ease;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .4));
+  z-index: 5;
 }
-.hint svg { width: 100%; height: 100%; fill: rgba(255, 255, 255, .9); }
-.hint-up { top: 4px; left: 50%; transform: translateX(-50%); }
-.hint-down { bottom: 4px; left: 50%; transform: translateX(-50%); }
-.hint-left { left: 4px; top: 50%; transform: translateY(-50%); }
-.hint-right { right: 4px; top: 50%; transform: translateY(-50%); }
+.hint-label b { color: #fff; font-weight: 600; }
+.orb:hover .hint-label { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-.orb:hover .hint-up { opacity: 1; top: 6px; }
-.orb:hover .hint-down { opacity: 1; bottom: 6px; }
-.orb:hover .hint-left { opacity: 1; left: 6px; }
-.orb:hover .hint-right { opacity: 1; right: 6px; }
-
-/* 深色系主题里方向箭头为白色，浅色主题下加深 */
-body[data-theme="light"] .hint svg { fill: rgba(30, 41, 59, .85); }
-body[data-theme="light"] .hint { filter: none; }
+/* 浅色主题下提示条加深 */
+body[data-theme="light"] .hint-label { background: rgba(245, 247, 252, .92); color: rgba(30, 41, 59, .8); border-color: rgba(30, 41, 59, .12); }
+body[data-theme="light"] .hint-label b { color: #1e293b; }

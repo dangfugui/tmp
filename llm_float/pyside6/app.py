@@ -51,6 +51,8 @@ class App:
         return {"text": random.choice(CHAT_REPLIES)}
 
     def tts_start(self):
+        # 打开字幕播报时停掉识别循环，避免两个线程同时操作气泡窗口
+        self.asr_stop()
         if self._tts_thread and self._tts_thread.is_alive():
             return
         self._tts_stop.set()
@@ -73,6 +75,8 @@ class App:
         self.overlay.finish_tts()
 
     def asr_start(self):
+        # 打开识别时停掉字幕播报循环，避免两个线程同时操作气泡窗口
+        self.tts_stop()
         if self._asr_thread and self._asr_thread.is_alive():
             return
         self._asr_stop.set()

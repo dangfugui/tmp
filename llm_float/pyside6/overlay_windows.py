@@ -18,6 +18,7 @@ class UiScheduler(QObject):
     def __init__(self):
         super().__init__()
         self._queue = []
+        self._calls = []
         self._lock = threading.Lock()
 
     @Slot()
@@ -36,6 +37,22 @@ class UiScheduler(QObject):
         with self._lock:
             self._queue.append((window, name, payload))
         QMetaObject.invokeMethod(self, "flush", Qt.QueuedConnection)
+
+    @Slot()
+    def flush_calls(self):
+        with self._lock:
+            calls, self._calls = self._calls, []
+        for fn in calls:
+            try:
+                fn()
+            except Exception:
+                logger.exception("UI call failed")
+
+    def schedule_call(self, fn):
+        """把任意函数调度到主线程（UI 线程）执行，线程安全。"""
+        with self._lock:
+            self._calls.append(fn)
+        QMetaObject.invokeMethod(self, "flush_calls", Qt.QueuedConnection)
 
 
 class Backend(QObject):
@@ -69,6 +86,18 @@ class Backend(QObject):
 
     @Slot()
     def hide_bubble(self): self.window.host.hide_bubble()
+
+    @Slot()
+    def hide_all(self): self.window.host.hide_all()
+
+    @Slot()
+    def tts_demo(self):
+        # 先返回，避免在 WebChannel IPC 处理期间同步操作窗口导致死锁
+        QTimer.singleShot(0, self.window.host.tts_demo)
+
+    @Slot()
+    def asr_demo(self):
+        QTimer.singleShot(0, self.window.host.asr_demo)
 
     @Slot()
     def show_menu(self): self.window.host.show_menu()

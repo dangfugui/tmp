@@ -191,8 +191,8 @@ window.assistant.setTheme = function (payload) {
   applyChatTheme(payload && payload.theme ? payload.theme : "dark");
 };
 
-document.getElementById("btn-close").addEventListener("click", () => callApi("hide_chat"));
-document.getElementById("btn-min").addEventListener("click", () => callApi("hide_chat"));
+document.getElementById("btn-close").addEventListener("click", () => callApi("hide_all"));
+document.getElementById("btn-min").addEventListener("click", () => callApi("hide_all"));
 document.getElementById("btn-clear").addEventListener("click", () => {
   messagesEl.innerHTML = "";
   addMessage("bot", WELCOME);

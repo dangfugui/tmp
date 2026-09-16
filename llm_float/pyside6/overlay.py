@@ -1,4 +1,5 @@
 import os
+import math
 import multiprocessing
 import sys
 
@@ -31,7 +32,7 @@ PALETTE = [
     {"title": "中性色", "colors": ["#FFFFFF", "#AFAFAF", "#848383", "#656565", "#555555", "#525252", "#474747", "#313131", "#282828"]},
 ]
 
-VALID_THEMES = ("flat", "neon", "synthwave")
+VALID_THEMES = ("flat", "neon", "synthwave", "glass", "macaron")
 
 
 def page(name):
@@ -145,6 +146,34 @@ class OverlayHost:
         if self.bubble is not None: self.bubble.hide()
         if self._active == "bubble": self._set_active(None)
         if self.on_bubble_hide: self.on_bubble_hide()
+    def hide_all(self):
+        """隐藏所有弹窗（聊天/设置/气泡），只保留悬浮球，悬浮球回到静默态。"""
+        self._hide_others(None)
+        if self._active is not None:
+            self._set_active(None)
+        if self.on_bubble_hide:
+            self.on_bubble_hide()
+
+    def tts_demo(self):
+        """打开字幕气泡并推送一条演示字幕。
+        分两步执行：先隐藏设置窗（当前 WebChannel IPC 所在窗口），延迟一帧后再显示气泡，
+        避免两个 WebEngine 窗口在同一事件循环迭代内同时一隐一显导致渲染进程死锁（null texture）。"""
+        self._hide_others(None)
+        QTimer.singleShot(80, self._do_tts_demo)
+
+    def _do_tts_demo(self):
+        self.open_subtitle()
+        self._push_tts_text("这是一条 TTS 演示字幕，文字过长时会自动换行。", index=0)
+
+    def asr_demo(self):
+        """打开识别气泡并推送演示识别状态与文本（分步执行，原因同上）。"""
+        self._hide_others(None)
+        QTimer.singleShot(80, self._do_asr_demo)
+
+    def _do_asr_demo(self):
+        self.open_asr()
+        self._set_asr_state("listening")
+        self._push_asr_partial("正在识别演示语音…")
     def show_menu(self):
         menu = QMenu(); menu.addAction("退出"); menu.exec()
     def orb_action(self, direction):
@@ -199,6 +228,92 @@ class OverlayHost:
     def chat_send(self, text): return self.chat_handler(text)
     def _safe_send(self, window, name, payload):
         if window is not None: self._ui_scheduler.schedule(window, name, payload)
+
+    # ---------- 气泡内容推送（自动换行 + 高度自适应） ----------
+    def _measure_text_width(self, text, font_px=17):
+        """估算文本在气泡内的渲染宽度（px）。优先 QFontMetrics，失败时按全角/半角估算。"""
+        text = str(text)
+        try:
+            from PySide6.QtGui import QFont, QFontMetrics
+            font = QFont("Microsoft YaHei UI", 10)
+            font.setPixelSize(font_px)
+            return QFontMetrics(font).horizontalAdvance(text)
+        except Exception:
+            return sum(font_px if ord(c) > 0x2E7F else font_px * 0.5 for c in text)
+
+    def _fit_bubble_height(self, text, max_lines=2):
+        """按文本估算行数，自适应调整气泡窗口高度（最多 max_lines 行，超出由 CSS 裁剪）。
+        窗口几何调整调度到主线程执行，避免从业务线程或 WebChannel 槽直接操作 QWidget。"""
+        if self.bubble is None:
+            return
+        avail_w = BUBBLE_W - 40                     # 左右 padding 各 20
+        advance = self._measure_text_width(text)
+        lines = max(1, math.ceil(advance / max(1, avail_w - 8)))
+        lines = min(lines, max(1, max_lines))
+        target = BUBBLE_H + (lines - 1) * 24 + TAIL_H
+        bubble = self.bubble
+
+        def apply_geometry():
+            if bubble is None:
+                return
+            x, y = self._anchor_above(BUBBLE_W, target)
+            if (bubble.x(), bubble.y(), bubble.width(), bubble.height()) != (x, y, BUBBLE_W, target):
+                bubble.resize(BUBBLE_W, target)
+                bubble.move(x, y)
+
+        self._ui_scheduler.schedule_call(apply_geometry)
+
+    def _push_tts_text(self, text, index=None):
+        text = str(text)
+        # 整个执行体调度到主线程：窗口开合/几何操作不允许在业务线程执行（会导致 Qt 崩溃）
+        self._ui_scheduler.schedule_call(lambda: self._push_tts_text_main(text, index))
+
+    def _push_tts_text_main(self, text, index):
+        if self.bubble is None or self._bubble_mode != "subtitle":
+            self._hide_others("bubble")
+            self._bubble_mode = "subtitle"
+            self._ensure_bubble()
+        try:
+            max_lines = int(self.settings_store.value("tts_lines", 2) or 2)
+        except (TypeError, ValueError):
+            max_lines = 2
+        self._fit_bubble_height(text, max_lines=max_lines)
+        self._safe_send(self.bubble, "onTtsSentence", {"text": text, "index": index})
+
+    def _set_asr_state(self, state):
+        state = str(state)
+        self._ui_scheduler.schedule_call(lambda: self._set_asr_state_main(state))
+
+    def _set_asr_state_main(self, state):
+        if self.bubble is None or self._bubble_mode != "asr":
+            self._hide_others("bubble")
+            self._bubble_mode = "asr"
+            self._ensure_bubble()
+        self._safe_send(self.bubble, "onAsrState", {"state": state})
+
+    def _push_asr_partial(self, text):
+        text = str(text)
+        self._ui_scheduler.schedule_call(lambda: self._push_asr_partial_main(text))
+
+    def _push_asr_partial_main(self, text):
+        if self.bubble is None or self._bubble_mode != "asr":
+            self._hide_others("bubble")
+            self._bubble_mode = "asr"
+            self._ensure_bubble()
+        self._fit_bubble_height(text, max_lines=3)
+        self._safe_send(self.bubble, "onAsrPartial", {"text": text})
+
+    def _push_asr_final(self, text):
+        text = str(text)
+        self._ui_scheduler.schedule_call(lambda: self._push_asr_final_main(text))
+
+    def _push_asr_final_main(self, text):
+        if self.bubble is None or self._bubble_mode != "asr":
+            self._hide_others("bubble")
+            self._bubble_mode = "asr"
+            self._ensure_bubble()
+        self._fit_bubble_height(text, max_lines=3)
+        self._safe_send(self.bubble, "onAsrFinal", {"text": text})
 
 
 class Overlay:
@@ -278,6 +393,21 @@ class Overlay:
             return self._process_call("hide_bubble")
         self._host.hide_bubble()
 
+    def hide_all(self):
+        if self._process_mode:
+            return self._process_call("hide_all")
+        self._host.hide_all()
+
+    def tts_demo(self):
+        if self._process_mode:
+            return self._process_call("tts_demo")
+        self._host.tts_demo()
+
+    def asr_demo(self):
+        if self._process_mode:
+            return self._process_call("asr_demo")
+        self._host.asr_demo()
+
     def get_settings(self):
         if self._process_mode:
             return self._process_call("get_settings", wait=True)
@@ -314,7 +444,7 @@ class Overlay:
     def push_tts_text(self, text, index=None):
         if self._process_mode:
             return self._process_call("_push_tts_text", str(text), index)
-        self._host._safe_send(self._host.bubble, "onTtsSentence", {"text": str(text), "index": index})
+        self._host._push_tts_text(str(text), index)
 
     def finish_tts(self):
         if self._process_mode:
@@ -324,17 +454,17 @@ class Overlay:
     def set_asr_state(self, state):
         if self._process_mode:
             return self._process_call("_set_asr_state", str(state))
-        self._host._safe_send(self._host.bubble, "onAsrState", {"state": str(state)})
+        self._host._set_asr_state(str(state))
 
     def push_asr_partial(self, text):
         if self._process_mode:
             return self._process_call("_push_asr_partial", str(text))
-        self._host._safe_send(self._host.bubble, "onAsrPartial", {"text": str(text)})
+        self._host._push_asr_partial(str(text))
 
     def push_asr_final(self, text):
         if self._process_mode:
             return self._process_call("_push_asr_final", str(text))
-        self._host._safe_send(self._host.bubble, "onAsrFinal", {"text": str(text)})
+        self._host._push_asr_final(str(text))
 
     def set_theme(self, theme):
         if self._process_mode:

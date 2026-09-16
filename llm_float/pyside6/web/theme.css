@@ -271,6 +271,94 @@ body[data-theme="synthwave"] {
   --orb-asr-shadow: 0 0 8px #4ade80, 0 0 24px rgba(74,222,128,.4), 0 10px 26px rgba(0,0,0,.5), inset 0 0 14px rgba(74,222,128,.22);
 }
 
+/* ================= glass（液态玻璃 · G1）================= */
+body[data-theme="glass"] {
+  --bg-card: rgba(16, 18, 26, 0.88);
+  --bg-glass: rgba(255, 255, 255, 0.045);
+  --bg-glass-strong: rgba(255, 255, 255, 0.09);
+  --titlebar-bg: rgba(255, 255, 255, 0.03);
+  --divider: rgba(255, 255, 255, 0.08);
+  --text-primary: #eef1f8;
+  --text-secondary: #98a2b8;
+  --accent: #6d7cff;
+  --accent-2: #8b5cf6;
+  --accent-grad: linear-gradient(135deg, #6d7cff 0%, #8b5cf6 100%);
+  --input-bg: rgba(255, 255, 255, 0.05);
+  --input-border: rgba(255, 255, 255, 0.1);
+  --focus-ring: rgba(109, 124, 255, 0.35);
+  --chip-bg: rgba(255, 255, 255, 0.06);
+  --shadow-card: 0 20px 50px rgba(0, 0, 0, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.12);
+
+  /* 悬浮球 · 液态玻璃五态（紫蓝渐变） */
+  --orb-glass-bg: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, .55), rgba(255, 255, 255, .1) 36%, rgba(255, 255, 255, 0) 54%);
+  --orb-border: 1px solid rgba(255, 255, 255, .18);
+  --orb-idle-bg: radial-gradient(circle at 30% 24%, rgba(255,255,255,.3), rgba(255,255,255,0) 46%), linear-gradient(135deg, #6d7cff 0%, #7f6ff2 55%, #8b5cf6 100%);
+  --orb-idle-color: #fff;
+  --orb-idle-glow: rgba(109, 124, 255, .4);
+  --orb-idle-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 3px 8px rgba(0,0,0,.28), 0 0 22px var(--orb-idle-glow);
+  --orb-chat-bg: radial-gradient(circle at 30% 24%, rgba(255,255,255,.32), rgba(255,255,255,0) 46%), linear-gradient(135deg, #4a90ff 0%, #3b6cf6 55%, #2f5de0 100%);
+  --orb-chat-color: #fff;
+  --orb-chat-glow: rgba(74, 144, 255, .45);
+  --orb-chat-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 3px 8px rgba(0,0,0,.28), 0 0 22px var(--orb-chat-glow);
+  --orb-settings-bg: radial-gradient(circle at 30% 24%, rgba(255,255,255,.32), rgba(255,255,255,0) 46%), linear-gradient(135deg, #2fd4cf 0%, #0fb6c9 55%, #0e9bb8 100%);
+  --orb-settings-color: #fff;
+  --orb-settings-glow: rgba(56, 189, 208, .45);
+  --orb-settings-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 3px 8px rgba(0,0,0,.28), 0 0 22px var(--orb-settings-glow);
+  --orb-tts-bg: radial-gradient(circle at 30% 24%, rgba(255,255,255,.32), rgba(255,255,255,0) 46%), linear-gradient(135deg, #fb7185 0%, #f43f5e 55%, #d61f4a 100%);
+  --orb-tts-color: #fff;
+  --orb-tts-glow: rgba(251, 113, 133, .48);
+  --orb-tts-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 3px 8px rgba(0,0,0,.28), 0 0 22px var(--orb-tts-glow);
+  --orb-asr-bg: radial-gradient(circle at 30% 24%, rgba(255,255,255,.32), rgba(255,255,255,0) 46%), linear-gradient(135deg, #34d399 0%, #10b981 55%, #0a9d74 100%);
+  --orb-asr-color: #fff;
+  --orb-asr-glow: rgba(52, 211, 153, .48);
+  --orb-asr-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 3px 8px rgba(0,0,0,.28), 0 0 22px var(--orb-asr-glow);
+}
+
+/* ================= macaron（马卡龙奶油 · G4）================= */
+body[data-theme="macaron"] {
+  --bg-card: rgba(255, 249, 245, 0.96);
+  --bg-glass: rgba(255, 255, 255, 0.55);
+  --bg-glass-strong: rgba(255, 255, 255, 0.72);
+  --titlebar-bg: rgba(255, 255, 255, 0.4);
+  --divider: rgba(180, 150, 160, 0.16);
+  --text-primary: #5d4a56;
+  --text-secondary: #a08b97;
+  --accent: #f59eb0;
+  --accent-2: #b9a6f2;
+  --accent-grad: linear-gradient(135deg, #ffb3c1 0%, #c9b6ff 100%);
+  --input-bg: rgba(255, 255, 255, 0.6);
+  --input-border: rgba(180, 150, 160, 0.28);
+  --focus-ring: rgba(245, 158, 176, 0.35);
+  --chip-bg: rgba(255, 255, 255, 0.55);
+  --shadow-card: 0 18px 40px rgba(190, 150, 165, 0.32);
+  --glass-border: rgba(255, 255, 255, 0.8);
+
+  /* 悬浮球 · 马卡龙奶油五态（柔和粉彩 + 奶油描边） */
+  --orb-glass-bg: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, .7), rgba(255, 255, 255, .18) 42%, rgba(255, 255, 255, 0) 58%);
+  --orb-border: 1px solid rgba(255, 255, 255, .65);
+  --orb-idle-bg: linear-gradient(145deg, #ffc2cf 0%, #ffb3c1 100%);
+  --orb-idle-color: #7a4a5c;
+  --orb-idle-glow: rgba(255, 179, 193, .5);
+  --orb-idle-shadow: 0 1px 1px rgba(255,255,255,.8) inset, 0 -5px 12px rgba(190,120,140,.18) inset, 0 10px 22px rgba(190, 150, 165, .38);
+  --orb-chat-bg: linear-gradient(145deg, #b9e6f2 0%, #a8d8f0 100%);
+  --orb-chat-color: #3f5f7a;
+  --orb-chat-glow: rgba(168, 216, 240, .55);
+  --orb-chat-shadow: 0 1px 1px rgba(255,255,255,.8) inset, 0 -5px 12px rgba(110,160,190,.18) inset, 0 10px 22px rgba(140, 170, 195, .38);
+  --orb-settings-bg: linear-gradient(145deg, #ffe9b8 0%, #ffe29a 100%);
+  --orb-settings-color: #8a6d2f;
+  --orb-settings-glow: rgba(255, 226, 154, .6);
+  --orb-settings-shadow: 0 1px 1px rgba(255,255,255,.8) inset, 0 -5px 12px rgba(200,160,80,.18) inset, 0 10px 22px rgba(200, 175, 120, .38);
+  --orb-tts-bg: linear-gradient(145deg, #d4c3ff 0%, #c9b6ff 100%);
+  --orb-tts-color: #5b4a8a;
+  --orb-tts-glow: rgba(201, 182, 255, .55);
+  --orb-tts-shadow: 0 1px 1px rgba(255,255,255,.8) inset, 0 -5px 12px rgba(140,110,200,.18) inset, 0 10px 22px rgba(160, 140, 205, .38);
+  --orb-asr-bg: linear-gradient(145deg, #b9ecd2 0%, #a5e8cd 100%);
+  --orb-asr-color: #3f6b58;
+  --orb-asr-glow: rgba(165, 232, 205, .6);
+  --orb-asr-shadow: 0 1px 1px rgba(255,255,255,.8) inset, 0 -5px 12px rgba(110,190,150,.18) inset, 0 10px 22px rgba(140, 190, 165, .38);
+}
+
 /* 滚动条 */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
