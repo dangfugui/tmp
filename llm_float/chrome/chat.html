@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI 助手</title>
+  <link rel="stylesheet" href="chat.css" />
+</head>
+<body>
+  <div class="card">
+    <header class="titlebar" id="titlebar">
+      <div class="brand">
+        <span class="avatar">AI</span>
+        <div class="brand-text">
+          <span class="name">AI 助手</span>
+          <span class="status"><i class="dot"></i>在线</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="icon-btn" id="btn-clear" title="清空对话">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="btn-min" title="收起">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round"><path d="M5 12h14"/></svg>
+        </button>
+        <button class="icon-btn danger" id="btn-close" title="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="messages" id="messages"></main>
+
+    <footer class="composer">
+      <textarea id="input" rows="1" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
+      <button class="send" id="send" title="发送">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+      </button>
+    </footer>
+  </div>
+  <script src="chat.js"></script>
+</body>
+</html>

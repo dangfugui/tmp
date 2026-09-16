@@ -1,25 +1,20 @@
-# Coding Rules
-## Think before coding 码前先思考
-- Do not make assumptions. If anything is ambiguous, ask clarifying questions before writing code.
-- Present multiple interpretations if the requirement can be read in different ways.
-- If a simpler solution exists, mention it.
-- Stop and point out confusion instead of guessing.
+# LLM Float Orb Chrome Extension
 
-## Simplicity first 极简优先
-- Avoid over-engineering, unnecessary abstractions, unused flexibility.
-- Do not add features that were not requested.
-- Do not handle error cases that cannot happen.
-- Prefer smaller code over large code. If a task can be done in 50 lines, do not write 300.
+A simple Chrome extension that displays a floating AI assistant orb in the browser toolbar. The extension uses Manifest V3 and provides a settings page for user preferences.
 
-## Surgical changes 外科手术式修改
-- Only modify code that is required by the request.
-- Do not refactor or "improve" surrounding code, comments, formatting unless explicitly asked.
-- Preserve existing code style even if you would write it differently.
-- If you spot dead code, mention it, do not delete it unless requested.
-- Only clean up unused imports / variables created by your own changes.
-- Every line you change must be traceable to the user request.
+## Files
+- `manifest.json` – extension metadata
+- `orb.html` – popup/orb UI
+- `orb.css` – styling for the orb
+- `orb.js` – optional interaction logic
+- `options.html` – settings page
+- `options.js` – handles saving/loading settings via chrome.storage
 
-## Goal-driven execution 目标驱动执行
-- Turn requirements into verifiable success criteria.
-- Break multi-step tasks into steps with validation after each step.
-- Iterate until the success criteria are satisfied.
+## Usage
+1. Load the extension in Chrome via `chrome://extensions` → Load unpacked → select the `chrome` folder.
+2. Click the extension icon to see the orb.
+3. Access settings via the extension’s Details → Extension options.
+
+## Notes
+- No external dependencies; all code is inline or local.
+- Settings are stored using `chrome.storage.sync`.

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Orb Tech Option 2</title>
+<style>
+  body {margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f1a;}
+  .orb {
+    width:68px;height:68px;border-radius:50%;
+    background:#1e293b;
+    position:relative;overflow:hidden;
+  }
+  /* outer glow */
+  .orb::after {
+    content:"";
+    position:absolute;inset:-4px;
+    border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, #8b5cf644, transparent);
+    pointer-events:none;
+  }
+  /* inner blue core */
+  .orb::before {
+    content:"";
+    position:absolute;inset:8px;
+    border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, #60a5fa, #3b82f6);
+    pointer-events:none;
+  }
+  /* robot antenna */
+  .antenna {
+    position:absolute;left:50%;top:-6px;
+    transform:translateX(-50%);
+    width:2px;height:6px;background:#fff;
+  }
+  .antenna::after {
+    content:"";
+    position:absolute;left:50%;bottom:100%;
+    transform:translateX(-50%);
+    width:6px;height:6px;background:#fff;border-radius:50%;
+  }
+</style>
+</head>
+<body>
+<div class="orb">
+  <div class="antenna"></div>
+</div>
+</body>
+</html>
