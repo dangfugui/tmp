@@ -26,5 +26,16 @@ def run_demo():
     # Settings
     overlay.open_settings()
     time.sleep(1)
+
+    # 案例1：设置 URL 回调（每次点击聊天时触发，获取当前页面 URL）
+    import qwenpaw_chat
+    qwenpaw_chat.set_browser_url_provider(lambda: "https://www.baidu.com/s?wd=hello")
+    print("当前页面 URL:", qwenpaw_chat.get_active_browser_url())
+
+    # 案例2：获取聊天（网址匹配）配置列表，供外部对接取用
+    import os
+    from settings_store import SettingsStore
+    profiles = SettingsStore(os.path.dirname(os.path.abspath(__file__))).value("chat_profiles") or []
+    print("聊天配置列表:", profiles)
 if __name__ == "__main__":
     sys.exit(run_demo())

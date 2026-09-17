@@ -47,8 +47,9 @@ class App:
         self.overlay.start()
 
     def chat_send(self, text):
-        time.sleep(0.35 + random.random() * 0.4)
-        return {"text": random.choice(CHAT_REPLIES)}
+        from qwenpaw_chat import start_chat
+        start_chat(self.overlay.host, text)
+        return None
 
     def tts_start(self):
         # 打开字幕播报时停掉识别循环，避免两个线程同时操作气泡窗口
@@ -108,6 +109,13 @@ class App:
 
 def main():
     controller = App()
+    # QApplication 已在 Overlay 初始化时创建；此时禁用 Qt WebEngine 磁盘缓存，
+    # 确保本地页面资源（chat.js/css）每次都是最新
+    try:
+        from PySide6.QtWebEngineCore import QWebEngineProfile
+        QWebEngineProfile.defaultProfile().setHttpCacheType(QWebEngineProfile.NoCache)
+    except Exception:
+        pass
     controller.start()
     sys.exit(controller.overlay.exec())
 

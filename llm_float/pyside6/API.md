@@ -484,25 +484,91 @@ overlay.exec()
 
 ***
 
-## 8. 扩展点（约定但前端未实现）
+## 8. 扩展点
 
 
 
-* **聊天消息推送**：`OverlayHost._ensure_chat()` 会向聊天页推送 `onChatMessage` / `onPalette`，但 `chat.js` 目前只实现了 `setTheme`。如需 Python 端主动往聊天窗塞消息 / 调色板，需在 `chat.js` 增加：
-
-
-
-```
-window.assistant.onChatMessage = function (payload) { /\\\* role, text \\\*/ };
-
-window.assistant.onPalette = function (payload) { /\\\* groups \\\*/ };
-```
+* **聊天消息推送（已实现）**：`web/chat.js` 已注册 `window.assistant.onChatMessage`，支持流式增量，payload：
+  - `{ role: "bot", text, done: false }`：流式增量（text 为当前累计文本）
+  - `{ role: "bot", text, done: true }`：回复结束
+  - `{ role: "bot", error }`：出错（等价 done，前端显示错误）
+  `OverlayHost._ensure_chat()` 不再推送欢迎语 / 调色板（由前端本地初始化），`onPalette` 不再使用。
 
 
 
 * `setOrbGradient`：悬浮球已支持运行时自定义渐变（覆盖主题），适合做 "跟随语音情绪变色" 等效果。
 
 
+
+***
+
+## 9. QwenPaw 聊天对接（简单聊天）
+
+文件：`qwenpaw_chat.py`。只做简单聊天：`POST /api/console/chat` + SSE 流式，忽略认证 / 多 Agent / Token 管理等复杂功能。
+
+### 9.1 开箱即用（推荐）
+
+`OverlayHost` 未传 `chat_handler` 时自动走内置 QwenPaw 对接，独立进程模式直接可用：
+
+```
+from overlay import Overlay
+
+overlay = Overlay()      # 无参 = 独立进程，聊天自动对接 QwenPaw
+overlay.open_chat()
+overlay.exec()
+```
+
+### 9.2 宿主模式显式接入
+
+```
+from overlay import Overlay
+from qwenpaw_chat import create_chat_handler
+
+overlay = Overlay(chat_handler=create_chat_handler(lambda: overlay.host))
+overlay.open_chat()
+overlay.exec()
+```
+
+### 9.3 手动触发
+
+```
+from qwenpaw_chat import start_chat
+start_chat(overlay.host, "你好")   # 启动后台线程，流式回复推送到聊天窗
+```
+
+### 9.4 配置（环境变量，均可省略）
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `QWENPAW_BASE_URL` | `http://localhost:8088` | QwenPaw 服务根地址 |
+| `QWENPAW_AGENT_ID` | `default` | Agent ID |
+| `QWENPAW_SESSION_ID` | `overlay-chat` | 会话 ID（固定即可保持多轮上下文） |
+| `QWENPAW_USER_ID` | `overlay-user` | 用户 ID |
+| `QWENPAW_TIMEOUT` | `60` | 单次请求超时秒数 |
+
+> 本地（127.0.0.1）请求自动绕过认证；远程访问需先在实例上启用并配置认证，细节见 `qwenpaw-API.md`。
+
+### 9.5 按浏览器网址匹配聊天配置
+
+设置页新增分组「聊天（网址匹配）」，可配置多条聊天配置，每条含 4 个字段：
+
+| 字段 | 说明 |
+| --- | --- |
+| `chatName` | 配置名称（仅标识） |
+| `urlRegex` | 网址匹配正则（`re.search` 匹配当前浏览器活动标签 URL） |
+| `baseUrl` | 该配置使用的 QwenPaw 服务根地址 |
+| `agentId` | 该配置使用的 Agent ID |
+
+匹配规则：
+
+- **第一条配置视为默认兜底，不参与匹配**；从第二条起按 `urlRegex` 依次匹配
+- 命中第一条匹配的配置 → 聊天用该配置的 `baseUrl` / `agentId` 调用 QwenPaw
+- 全部未命中 → 使用第一条（默认）配置
+- 非法正则自动跳过
+
+浏览器 URL 来源：`qwenpaw_chat.get_active_browser_url()`，当前为 **Mock，永远返回 `https://www.baidu.com/`**；后续对接 Chrome 扩展 / 浏览器接口时替换该函数为真实实现即可。
+
+调用链：`open_chat()` → `_refresh_chat_profile()` 计算并缓存 → `chat_send()` → `start_chat()` 使用缓存配置请求 QwenPaw。
 
 ***
 

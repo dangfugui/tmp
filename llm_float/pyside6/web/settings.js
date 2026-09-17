@@ -10,6 +10,14 @@ const FALLBACK_SETTINGS = [
     ],
   },
   {
+    section: '聊天（网址匹配）',
+    items: [
+      { key: 'chat_profiles', label: '', type: 'chat_profiles', value: [
+        { chatName: '默认', urlRegex: '.*', baseUrl: 'http://localhost:8088', agentId: 'default', ttsTarget: '' },
+      ] },
+    ],
+  },
+  {
     section: '聊天（Agent）',
     items: [
       { key: 'base_url', label: '接口地址 Base URL', type: 'text', value: 'https://api.example.com/v1' },
@@ -25,6 +33,7 @@ const FALLBACK_SETTINGS = [
       { key: 'asr_show_interim', label: '显示中间结果', type: 'bool', value: true },
     ],
   },
+
 ];
 let currentSettings = [];
 
@@ -41,12 +50,47 @@ function applyTheme(theme) {
   document.body.dataset.theme = theme || 'flat';
 }
 
+function buildProfileRow(p) {
+  p = p || {};
+  const row = document.createElement('tr');
+  row.className = 'profile-row';
+  const fields = [
+    ['chatName', '名称', p.chatName || ''],
+    ['urlRegex', '网址正则', p.urlRegex || ''],
+    ['baseUrl', 'Base URL', p.baseUrl || ''],
+    ['agentId', 'Agent ID', p.agentId || ''],
+    ['ttsTarget', 'TTS定位', p.ttsTarget || ''],
+  ];
+  fields.forEach(([pk, ph, val]) => {
+    const td = document.createElement('td');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.dataset.pk = pk;
+    input.placeholder = ph;
+    input.value = val;
+    td.appendChild(input);
+    row.appendChild(td);
+  });
+  const tdOp = document.createElement('td');
+  tdOp.className = 'profile-op';
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'profile-del';
+  del.title = '删除';
+  del.textContent = '×';
+  del.addEventListener('click', () => row.remove());
+  tdOp.appendChild(del);
+  row.appendChild(tdOp);
+  return row;
+}
+
 function prepareField(item) {
   const field = document.createElement('div');
   field.className = 'field';
+  if (item.type === 'chat_profiles') field.classList.add('field-wide');
   const label = document.createElement('label');
   label.textContent = item.label || item.key;
-  field.appendChild(label);
+  if (item.type !== 'chat_profiles') field.appendChild(label);
 
   const controlWrap = document.createElement('div');
 
@@ -85,6 +129,26 @@ function prepareField(item) {
     input.value = item.value ?? '';
     input.dataset.key = item.key;
     controlWrap.appendChild(input);
+  } else if (item.type === 'chat_profiles') {
+    const wrap = document.createElement('div');
+    wrap.className = 'profiles';
+    wrap.dataset.key = item.key;
+    const table = document.createElement('table');
+    table.className = 'profile-table';
+    table.innerHTML = '<thead><tr>' +
+      '<th>名称</th><th>网址正则</th><th>Base URL</th><th>Agent ID</th><th>TTS定位</th><th class="profile-op"></th>' +
+      '</tr></thead>';
+    const tbody = document.createElement('tbody');
+    tbody.className = 'profile-rows';
+    (Array.isArray(item.value) ? item.value : []).forEach((p) => tbody.appendChild(buildProfileRow(p)));
+    table.appendChild(tbody);
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'profile-add';
+    add.textContent = '+ 添加配置';
+    add.addEventListener('click', () => tbody.appendChild(buildProfileRow({})));
+    wrap.append(table, add);
+    controlWrap.appendChild(wrap);
   } else if (item.type === 'list') {
     const input = document.createElement('input');
     input.type = 'text';
@@ -142,10 +206,19 @@ function readFormValues() {
     const parent = section.parentElement;
     const field = currentSettings.flatMap(s => s.items || []).find(item => item.key === key);
     if (!field) return;
-    let val = node.value;
-    if (node.type === 'checkbox') val = node.checked;
-    else if (field.type === 'number') val = Number(val);
-    else if (field.type === 'list') val = String(val).split(',').map(v => v.trim()).filter(Boolean);
+    let val;
+    if (field.type === 'chat_profiles') {
+      val = Array.from(node.querySelectorAll('.profile-row')).map((row) => {
+        const obj = {};
+        row.querySelectorAll('input[data-pk]').forEach((inp) => { obj[inp.dataset.pk] = inp.value.trim(); });
+        return obj;
+      }).filter((o) => o.chatName || o.urlRegex || o.baseUrl || o.agentId || o.ttsTarget);
+    } else {
+      val = node.value;
+      if (node.type === 'checkbox') val = node.checked;
+      else if (field.type === 'number') val = Number(val);
+      else if (field.type === 'list') val = String(val).split(',').map(v => v.trim()).filter(Boolean);
+    }
     values[key] = val;
   });
   return values;

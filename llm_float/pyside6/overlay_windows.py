@@ -1,6 +1,7 @@
 import json
 import os
 import threading
+import time
 
 from PySide6.QtCore import QMetaObject, QObject, QTimer, QUrl, Qt, Slot
 from PySide6.QtGui import QBitmap, QColor, QPainter, QGuiApplication, QRegion
@@ -123,6 +124,42 @@ class Backend(QObject):
     @Slot(str, result="QVariant")
     def chat_send(self, text): return self.window.host.chat_send(text)
 
+    @Slot(result=str)
+    def get_chat_profile(self):
+        profile = getattr(self.window.host, "_active_chat_profile", None) or {}
+        return json.dumps(profile, ensure_ascii=False)
+
+    @Slot(result=str)
+    def get_chat_profiles(self):
+        profiles = self.window.host.settings_store.value("chat_profiles") or []
+        logger.info("get_chat_profiles called: %d entries: %s", len(profiles),
+                    [p.get("chatName") for p in profiles if isinstance(p, dict)])
+        return json.dumps(profiles, ensure_ascii=False)
+
+    @Slot(str)
+    def js_log(self, message): logger.info("[JS] %s", message)
+
+    @Slot()
+    def request_chat_profiles(self):
+        profiles = self.window.host.settings_store.value("chat_profiles") or []
+        logger.info("request_chat_profiles: %d entries", len(profiles))
+        self.window.send_js("setChatProfiles", {"profiles": profiles})
+
+    @Slot()
+    def request_active_chat_profile(self):
+        profile = getattr(self.window.host, "_active_chat_profile", None) or {}
+        self.window.send_js("setActiveChatProfile", {"profile": profile})
+
+    @Slot(str, result=bool)
+    def set_chat_profile(self, name):
+        host = self.window.host
+        logger.info("set_chat_profile called: %r", name)
+        for profile in host.settings_store.value("chat_profiles") or []:
+            if (profile or {}).get("chatName") == name:
+                host._active_chat_profile = profile
+                return True
+        return False
+
     @Slot()
     def quit(self): QApplication.quit()
 
@@ -153,7 +190,10 @@ class WebWindow(QWidget):
         self.channel.registerObject("api", self.backend)
         self.view.page().setWebChannel(self.channel)
         self.view.loadFinished.connect(self._page_loaded)
-        self.view.load(QUrl.fromLocalFile(url))
+        # 追加时间戳 query，避免 Qt WebEngine 磁盘缓存加载旧版页面资源
+        page_url = QUrl.fromLocalFile(url)
+        page_url.setQuery("v=" + str(int(time.time() * 1000)))
+        self.view.load(page_url)
 
     def _page_loaded(self, ok):
         self.page_ready = ok

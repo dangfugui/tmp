@@ -19,7 +19,10 @@ window.assistant.setTheme = function (payload) {
 /* 悬浮球大小（px）：驱动图标与提示按比例缩放 */
 window.assistant.setOrbSize = function (payload) {
   const size = payload && payload.size ? Number(payload.size) : 68;
-  document.documentElement.style.setProperty("--orb-size", size + "px");
+  // 视觉圆比窗口遮罩小 3px：QRegion 椭圆遮罩的像素锯齿落在透明环内，
+  // 可见边缘由浏览器抗锯齿渲染，消除悬浮球边缘毛刺
+  const visual = Math.max(20, size - 3);
+  document.documentElement.style.setProperty("--orb-size", visual + "px");
 };
 window.assistant.setOrbGradient = function (payload) {
   const start = payload && payload.start ? payload.start : "#6366f1";

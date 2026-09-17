@@ -16,6 +16,14 @@ SETTINGS_SCHEMA = [
         ],
     },
     {
+        "section": "聊天（网址匹配）",
+        "items": [
+            {"key": "chat_profiles", "label": "", "type": "chat_profiles", "value": [
+                {"chatName": "默认", "urlRegex": ".*", "baseUrl": "http://localhost:8088", "agentId": "default", "ttsTarget": ""},
+            ]},
+        ],
+    },
+    {
         "section": "聊天（Agent）",
         "items": [
             {"key": "base_url", "label": "接口地址 Base URL", "type": "text", "value": "https://api.example.com/v1"},
@@ -28,6 +36,7 @@ SETTINGS_SCHEMA = [
             {"key": "stream", "label": "流式输出", "type": "bool", "value": True},
         ],
     },
+
     {
         "section": "字幕（TTS）",
         "items": [
@@ -106,11 +115,9 @@ class SettingsStore:
         return True
 
     def reset(self):
+        # 只重置内存中的值（UI 立即预览默认效果）；不写盘，
+        # 必须点击“保存”才会真正持久化，否则退出后仍按原配置生效。
         self.values = copy.deepcopy(SETTINGS_SCHEMA)
-        try:
-            os.remove(self.path)
-        except FileNotFoundError:
-            pass
         return self.get()
 
     def value(self, key, default=None):

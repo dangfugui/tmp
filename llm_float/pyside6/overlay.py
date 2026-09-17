@@ -7,6 +7,11 @@ from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import QApplication, QMenu
 
 try:
+    from .overlay_log import logger
+except ImportError:
+    from overlay_log import logger
+
+try:
     from .overlay_process import run_overlay_process
 except ImportError:
     from overlay_process import run_overlay_process
@@ -44,9 +49,11 @@ class OverlayHost:
         self.orb = self.chat = self.settings = self.bubble = None
         self._active = None
         self._bubble_mode = None
+        self._active_chat_profile = None
         self.settings_store = SettingsStore(BASE_DIR)
         self._ui_scheduler = UiScheduler()
-        self.chat_handler = chat_handler or (lambda text: {"text": text})
+        # chat_handler 为 None 时，聊天自动走内置 QwenPaw 对接（见 chat_send）
+        self.chat_handler = chat_handler
         self.on_subtitle = on_subtitle
         self.on_asr = on_asr
         self.on_bubble_hide = on_bubble_hide
@@ -101,11 +108,11 @@ class OverlayHost:
         x, y = self._anchor_above(CHAT_W, CHAT_H + TAIL_H)
         if self.chat is None:
             self.chat = WebWindow(self, "ai-chat", page("chat.html"), CHAT_W, CHAT_H + TAIL_H, radius=CHAT_RADIUS)
-            QTimer.singleShot(0, lambda: self.chat.send_js("onChatMessage", {"role": "bot", "text": "你好，我是 AI 助手 👋"}))
-            QTimer.singleShot(0, lambda: self.chat.send_js("onPalette", {"groups": PALETTE}))
         self.chat.show()
         self.chat.move(x, y)
         self.chat.send_js("setTheme", {"theme": self.current_theme()})
+        profile = self._active_chat_profile or {}
+        self.chat.send_js("setChatTitle", {"chatName": profile.get("chatName") or ""})
 
     def _ensure_settings(self):
         height = min(SETTINGS_H, max(420, work_area().height() - 32))
@@ -127,7 +134,22 @@ class OverlayHost:
         self.bubble.send_js("setMode", {"mode": self._bubble_mode or "subtitle"})
         self.bubble.send_js("setTheme", {"theme": self.current_theme()})
 
-    def open_chat(self): self._hide_others("chat"); self._ensure_chat(); self._set_active("chat")
+    def open_chat(self):
+        self._refresh_chat_profile()
+        self._hide_others("chat")
+        self._ensure_chat()
+        self._set_active("chat")
+
+    def _refresh_chat_profile(self):
+        """打开聊天页时，按当前浏览器 URL（Mock）匹配聊天配置并缓存；无匹配则用第一条。"""
+        try:
+            from qwenpaw_chat import get_active_chat_profile
+            self._active_chat_profile = get_active_chat_profile(self)
+            logger.info("active chat profile: %s",
+                        (self._active_chat_profile or {}).get("chatName"))
+        except Exception as exc:
+            logger.warning("refresh chat profile failed: %s", exc)
+            self._active_chat_profile = None
     def hide_chat(self):
         if self.chat is not None: self.chat.hide()
         if self._active == "chat": self._set_active(None)
@@ -225,7 +247,17 @@ class OverlayHost:
         if self._active:
             self._set_active(self._active)
         old.deleteLater()
-    def chat_send(self, text): return self.chat_handler(text)
+    def chat_send(self, text):
+        """聊天消息入口。传入 chat_handler 时交给它处理；否则走内置 QwenPaw 对接。"""
+        if self.chat_handler is not None:
+            return self.chat_handler(text)
+        try:
+            from qwenpaw_chat import start_chat
+        except Exception as exc:  # 模块加载失败时把错误推给聊天窗，避免静默无响应
+            self._safe_send(self.chat, "onChatMessage", {"role": "bot", "error": "加载 QwenPaw 对接模块失败: {}".format(exc), "done": True})
+            return None
+        start_chat(self, text)
+        return None
     def _safe_send(self, window, name, payload):
         if window is not None: self._ui_scheduler.schedule(window, name, payload)
 

@@ -220,3 +220,94 @@ body {
   transition: 180ms ease;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- 聊天配置列表（按网址匹配）表格 ---------- */
+.profiles {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.profile-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.profile-table th {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  padding: 3px 5px;
+  border-bottom: 1px solid var(--divider);
+}
+.profile-table th.profile-op,
+.profile-table td.profile-op {
+  width: 28px;
+  text-align: center;
+}
+.profile-table td {
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--divider);
+}
+.profile-row:last-child td { border-bottom: none; }
+.profile-table td:nth-child(1) { width: 16%; }
+.profile-table td:nth-child(2) { width: 24%; }
+.profile-table td:nth-child(3) { width: 24%; }
+.profile-table td:nth-child(4) { width: 12%; }
+.profile-table td:nth-child(5) { width: 16%; }
+.profile-row input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 11px;
+  border-radius: 6px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color .15s, background .15s;
+}
+.profile-row input:focus {
+  border-color: var(--accent);
+  background: var(--bg-card);
+}
+.profile-del {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, .14);
+  color: #f87171;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.profile-del:hover { background: rgba(239, 68, 68, .28); }
+.profile-add {
+  align-self: flex-start;
+  padding: 5px 11px;
+  border-radius: 8px;
+  border: 1px dashed var(--input-border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: 140ms ease;
+}
+.profile-add:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ---------- 底部按钮分隔线 ---------- */
+.divider-v {
+  width: 1px;
+  height: 18px;
+  background: var(--divider);
+  margin: 0 2px;
+  flex: 0 0 auto;
+}
+
+/* 整行字段（无 label，如聊天配置表格） */
+.field-wide {
+  grid-template-columns: 1fr;
+}
+.field-wide label { display: none; }
