@@ -14,6 +14,9 @@ def run_demo():
     time.sleep(1)
     overlay.push_tts_text("你好啊", 0)
     time.sleep(1)
+
+    overlay.open_chat("你好")    # 打开聊天窗并立即发送这条消息
+
     # ASR
     overlay.set_asr_state("listening")
     time.sleep(1)
@@ -32,10 +35,9 @@ def run_demo():
     qwenpaw_chat.set_browser_url_provider(lambda: "https://www.baidu.com/s?wd=hello")
     print("当前页面 URL:", qwenpaw_chat.get_active_browser_url())
 
-    # 案例2：获取聊天（网址匹配）配置列表，供外部对接取用
-    import os
-    from settings_store import SettingsStore
-    profiles = SettingsStore(os.path.dirname(os.path.abspath(__file__))).value("chat_profiles") or []
-    print("聊天配置列表:", profiles)
+    # 案例2：获取全部设置参数（统一接口）
+    from settings_store import get_all_settings
+    all_settings = get_all_settings()
+    print("全部设置参数:", all_settings)
 if __name__ == "__main__":
     sys.exit(run_demo())

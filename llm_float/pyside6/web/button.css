@@ -26,8 +26,9 @@ body {
 /* ---------- 玻璃球体 ---------- */
 .orb {
   position: relative;
-  width: 100%;
-  height: 100%;
+  /* 可见圆尺寸由设置（orb_size）经 --orb-size 驱动；窗口透明，GPU 抗锯齿合成正圆 */
+  width: var(--orb-size, 68px);
+  height: var(--orb-size, 68px);
   border: none;
   border-radius: 50%;
   cursor: grab;

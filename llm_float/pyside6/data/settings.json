@@ -1,15 +1,13 @@
 {
-  "orb_opacity": 1,
+  "orb_opacity": 0.9,
   "theme": "neon",
   "orb_size": 68,
-  "language": "zh",
-  "autostart": false,
-  "default_mode": "chat",
   "chat_profiles": [
     {
       "agentId": "default",
       "baseUrl": "http://localhost:8088",
       "chatName": "默认",
+      "token": "",
       "ttsTarget": "",
       "urlRegex": ".*"
     },
@@ -17,10 +15,15 @@
       "agentId": "QwenPaw_QA_Agent_0.2",
       "baseUrl": "http://localhost:8088",
       "chatName": "Qwenpaw",
+      "token": "",
       "ttsTarget": "",
       "urlRegex": "baidu"
     }
   ],
+  "tts_lines": "1",
+  "language": "zh",
+  "autostart": false,
+  "default_mode": "chat",
   "base_url": "https://api.example.com/v1",
   "api_key": "",
   "model": "gpt-4o",
@@ -31,7 +34,6 @@
   "stream": true,
   "tts_font_size": 18,
   "tts_max_chars": 24,
-  "tts_lines": "2",
   "tts_align": "center",
   "tts_hold": 3,
   "tts_auto_hide": true,

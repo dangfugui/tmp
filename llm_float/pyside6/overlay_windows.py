@@ -124,17 +124,10 @@ class Backend(QObject):
     @Slot(str, result="QVariant")
     def chat_send(self, text): return self.window.host.chat_send(text)
 
-    @Slot(result=str)
-    def get_chat_profile(self):
-        profile = getattr(self.window.host, "_active_chat_profile", None) or {}
-        return json.dumps(profile, ensure_ascii=False)
-
-    @Slot(result=str)
-    def get_chat_profiles(self):
-        profiles = self.window.host.settings_store.value("chat_profiles") or []
-        logger.info("get_chat_profiles called: %d entries: %s", len(profiles),
-                    [p.get("chatName") for p in profiles if isinstance(p, dict)])
-        return json.dumps(profiles, ensure_ascii=False)
+    @Slot()
+    def stop_chat(self):
+        logger.info("stop_chat called")
+        self.window.host.stop_chat()
 
     @Slot(str)
     def js_log(self, message): logger.info("[JS] %s", message)
@@ -238,10 +231,14 @@ class WebWindow(QWidget):
 
     def apply_mask(self):
         if self.shape == "ellipse":
-            diameter = self.shape_size or min(self.width(), self.height())
+            # 二值蒙版仅用于限定窗口点击命中区域（透明窗口不蒙版会整块 120px 方块吞点击）。
+            # 直径比视觉圆大 8px：蒙版 1-bit 锯齿落在视觉圆外的透明环内不可见，
+            # 可见边缘由 CSS border-radius:50% 抗锯齿渲染；hover 缩放 1.06 后的圆仍落在蒙版内。
+            diameter = (self.shape_size or min(self.width(), self.height())) + 8
             x = (self.width() - diameter) // 2
             y = (self.height() - diameter) // 2
             self.setMask(QRegion(x, y, diameter, diameter, QRegion.Ellipse))
+            self.view.setStyleSheet("background: transparent;")
         elif self.shape == "rect" and self.shape_radius > 0:
             mask = QBitmap(self.size())
             mask.fill(Qt.color0)

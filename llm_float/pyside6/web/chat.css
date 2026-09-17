@@ -261,6 +261,9 @@ body { padding: 0; }
   transition: transform .15s, filter .15s, opacity .15s;
 }
 .send svg { width: 18px; height: 18px; }
+.send .stop-icon { display: none; }
+.send.stop .send-icon { display: none; }
+.send.stop .stop-icon { display: block; }
 .send:hover { filter: brightness(1.08); }
 .send:active { transform: scale(.93); }
 .send:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }

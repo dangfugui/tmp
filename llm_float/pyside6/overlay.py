@@ -1,7 +1,9 @@
 import os
 import math
 import multiprocessing
+import queue
 import sys
+import time
 
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import QApplication, QMenu
@@ -58,6 +60,11 @@ class OverlayHost:
         self.on_asr = on_asr
         self.on_bubble_hide = on_bubble_hide
         self._orb_size = int(self.settings_store.value("orb_size", ORB_SIZE))
+        # 弹窗窗口回收：隐藏超过 5 分钟销毁，释放 WebEngine 渲染进程内存（悬浮球常驻不回收）
+        self._hide_at = {}
+        self._reaper = QTimer()
+        self._reaper.timeout.connect(self._reap_hidden_windows)
+        self._reaper.start(30000)
 
     def start(self):
         if self.orb is not None:
@@ -86,9 +93,12 @@ class OverlayHost:
         return min(ox + inset + self._orb_size - width, geo.x() + geo.width() - width - 4), max(8, oy + inset - GAP - height - TAIL_H)
 
     def _hide_others(self, keep):
-        if keep != "chat" and self.chat is not None: self.chat.hide()
-        if keep != "settings" and self.settings is not None: self.settings.hide()
-        if keep != "bubble" and self.bubble is not None: self.bubble.hide()
+        if keep != "chat" and self.chat is not None:
+            self.chat.hide(); self._hide_at[self.chat] = time.time()
+        if keep != "settings" and self.settings is not None:
+            self.settings.hide(); self._hide_at[self.settings] = time.time()
+        if keep != "bubble" and self.bubble is not None:
+            self.bubble.hide(); self._hide_at[self.bubble] = time.time()
         if keep != "bubble": self._bubble_mode = None
 
     def _set_active(self, value):
@@ -134,11 +144,17 @@ class OverlayHost:
         self.bubble.send_js("setMode", {"mode": self._bubble_mode or "subtitle"})
         self.bubble.send_js("setTheme", {"theme": self.current_theme()})
 
-    def open_chat(self):
+    def open_chat(self, send=None):
+        """打开聊天窗；send 非空时在打开的同时发送该消息（用户消息会显示在聊天窗，非静默）。"""
         self._refresh_chat_profile()
         self._hide_others("chat")
         self._ensure_chat()
         self._set_active("chat")
+        if send:
+            # 先在前端显示用户消息气泡并进入 busy（按钮变「停止」），再触发后端请求
+            self._safe_send(self.chat, "onUserMessage", {"text": str(send)})
+            self._safe_send(self.chat, "onChatBusy", {"busy": True})
+            self.chat_send(send)
 
     def _refresh_chat_profile(self):
         """打开聊天页时，按当前浏览器 URL（Mock）匹配聊天配置并缓存；无匹配则用第一条。"""
@@ -151,11 +167,13 @@ class OverlayHost:
             logger.warning("refresh chat profile failed: %s", exc)
             self._active_chat_profile = None
     def hide_chat(self):
-        if self.chat is not None: self.chat.hide()
+        if self.chat is not None:
+            self.chat.hide(); self._hide_at[self.chat] = time.time()
         if self._active == "chat": self._set_active(None)
     def open_settings(self): self._hide_others("settings"); self._ensure_settings(); self._set_active("settings")
     def hide_settings(self):
-        if self.settings is not None: self.settings.hide()
+        if self.settings is not None:
+            self.settings.hide(); self._hide_at[self.settings] = time.time()
         if self._active == "settings": self._set_active(None)
     def open_subtitle(self):
         self._hide_others("bubble"); self._bubble_mode = "subtitle"; self._ensure_bubble(); self._set_active("bubble")
@@ -165,7 +183,8 @@ class OverlayHost:
         if self.on_asr: self.on_asr()
     def hide_bubble(self):
         self._bubble_mode = None
-        if self.bubble is not None: self.bubble.hide()
+        if self.bubble is not None:
+            self.bubble.hide(); self._hide_at[self.bubble] = time.time()
         if self._active == "bubble": self._set_active(None)
         if self.on_bubble_hide: self.on_bubble_hide()
     def hide_all(self):
@@ -175,6 +194,20 @@ class OverlayHost:
             self._set_active(None)
         if self.on_bubble_hide:
             self.on_bubble_hide()
+
+    def _reap_hidden_windows(self):
+        """回收长时间隐藏的弹窗窗口（WebEngine 渲染进程内存）；悬浮球常驻不回收。"""
+        now = time.time()
+        for attr in ("chat", "settings", "bubble"):
+            window = getattr(self, attr)
+            if window is None:
+                continue
+            ts = self._hide_at.get(window)
+            if ts is not None and window.isHidden() and now - ts > 300:
+                logger.info("reaping hidden window: %s", attr)
+                self._hide_at.pop(window, None)
+                setattr(self, attr, None)
+                window.deleteLater()
 
     def tts_demo(self):
         """打开字幕气泡并推送一条演示字幕。
@@ -227,7 +260,7 @@ class OverlayHost:
                 window.setWindowOpacity(opacity)
 
     def apply_orb_size(self, size):
-        """按设置重建悬浮球窗口（大小 40-96px），并保持右下角贴边与主题/透明度。"""
+        """按设置调整悬浮球大小（40-96px），复用现有窗口不重建 WebEngine。"""
         try:
             size = max(40, min(96, int(size)))
         except (TypeError, ValueError):
@@ -235,18 +268,14 @@ class OverlayHost:
         self._orb_size = size
         if self.orb is None:
             return
-        old = self.orb
-        geo = work_area()
-        inset = (BUTTON_WIN - self._orb_size) // 2
-        self.orb = WebWindow(self, "float-button", page("button.html"), BUTTON_WIN, BUTTON_WIN, shape="ellipse", size=self._orb_size)
-        self.orb.move(geo.x() + geo.width() - BUTTON_WIN - MARGIN + inset, geo.y() + geo.height() - BUTTON_WIN - MARGIN + inset)
-        self.orb.show()
+        # 复用窗口：更新遮罩直径 + 推送页面尺寸，避免销毁重建 WebEngine（省内存、无闪烁）
+        self.orb.shape_size = size
+        self.orb.apply_mask()
         self.orb.send_js("setOrbSize", {"size": self._orb_size})
         self.apply_theme(self.current_theme())
         self.apply_opacity(self.settings_store.value("orb_opacity", 1.0))
         if self._active:
             self._set_active(self._active)
-        old.deleteLater()
     def chat_send(self, text):
         """聊天消息入口。传入 chat_handler 时交给它处理；否则走内置 QwenPaw 对接。"""
         if self.chat_handler is not None:
@@ -258,6 +287,13 @@ class OverlayHost:
             return None
         start_chat(self, text)
         return None
+    def stop_chat(self):
+        """停止当前 QwenPaw 回复（自定义 chat_handler 模式下无效果，返回 False）。"""
+        try:
+            from qwenpaw_chat import stop_chat as _stop_qwenpaw
+            return _stop_qwenpaw(self)
+        except Exception:
+            return False
     def _safe_send(self, window, name, payload):
         if window is not None: self._ui_scheduler.schedule(window, name, payload)
 
@@ -390,81 +426,6 @@ class Overlay:
             raise RuntimeError("QApplication is not available")
         return app.exec()
 
-    def open_chat(self):
-        if self._process_mode:
-            return self._process_call("open_chat")
-        self._host.open_chat()
-
-    def hide_chat(self):
-        if self._process_mode:
-            return self._process_call("hide_chat")
-        self._host.hide_chat()
-
-    def open_settings(self):
-        if self._process_mode:
-            return self._process_call("open_settings")
-        self._host.open_settings()
-
-    def hide_settings(self):
-        if self._process_mode:
-            return self._process_call("hide_settings")
-        self._host.hide_settings()
-
-    def open_subtitle(self):
-        if self._process_mode:
-            return self._process_call("open_subtitle")
-        self._host.open_subtitle()
-
-    def open_asr(self):
-        if self._process_mode:
-            return self._process_call("open_asr")
-        self._host.open_asr()
-
-    def hide_bubble(self):
-        if self._process_mode:
-            return self._process_call("hide_bubble")
-        self._host.hide_bubble()
-
-    def hide_all(self):
-        if self._process_mode:
-            return self._process_call("hide_all")
-        self._host.hide_all()
-
-    def tts_demo(self):
-        if self._process_mode:
-            return self._process_call("tts_demo")
-        self._host.tts_demo()
-
-    def asr_demo(self):
-        if self._process_mode:
-            return self._process_call("asr_demo")
-        self._host.asr_demo()
-
-    def get_settings(self):
-        if self._process_mode:
-            return self._process_call("get_settings", wait=True)
-        return self._host.get_settings()
-
-    def save_settings(self, values):
-        if self._process_mode:
-            return self._process_call("save_settings", values, wait=True)
-        return self._host.save_settings(values)
-
-    def reset_settings(self):
-        if self._process_mode:
-            return self._process_call("reset_settings", wait=True)
-        return self._host.reset_settings()
-
-    def chat_send(self, text):
-        if self._process_mode:
-            return self._process_call("chat_send", text, wait=True)
-        return self._host.chat_send(text)
-
-    def current_theme(self):
-        if self._process_mode:
-            return self._process_call("current_theme", wait=True)
-        return self._host.current_theme()
-
     def quit(self):
         if self._process_mode:
             self._process_call("quit")
@@ -473,42 +434,41 @@ class Overlay:
         if app is not None:
             app.quit()
 
-    def push_tts_text(self, text, index=None):
-        if self._process_mode:
-            return self._process_call("_push_tts_text", str(text), index)
-        self._host._push_tts_text(str(text), index)
-
     def finish_tts(self):
         if self._process_mode:
             return self._process_call("_finish_tts")
         self._host._safe_send(self._host.bubble, "onTtsIdle", {})
 
-    def set_asr_state(self, state):
+    def start(self):
         if self._process_mode:
-            return self._process_call("_set_asr_state", str(state))
-        self._host._set_asr_state(str(state))
+            return None
+        self._host.start()
 
-    def push_asr_partial(self, text):
+    # ---- 其余公开方法统一代理：进程模式经管道转发，宿主模式直调 host ----
+    _HOST_ALIAS = {
+        "set_theme": "apply_theme",
+        "set_opacity": "apply_opacity",
+        "push_tts_text": "_push_tts_text",
+        "set_asr_state": "_set_asr_state",
+        "push_asr_partial": "_push_asr_partial",
+        "push_asr_final": "_push_asr_final",
+    }
+    _PROCESS_WAIT = ("chat_send", "get_settings", "save_settings", "reset_settings", "current_theme")
+
+    def __getattr__(self, name):
+        host_name = self._HOST_ALIAS.get(name, name)
+        if not hasattr(OverlayHost, host_name):
+            raise AttributeError("'Overlay' object has no attribute %r" % name)
         if self._process_mode:
-            return self._process_call("_push_asr_partial", str(text))
-        self._host._push_asr_partial(str(text))
+            wait = name in self._PROCESS_WAIT
 
-    def push_asr_final(self, text):
-        if self._process_mode:
-            return self._process_call("_push_asr_final", str(text))
-        self._host._push_asr_final(str(text))
+            def proxy(*args):
+                return self._process_call(host_name, *args, wait=wait)
+            return proxy
 
-    def set_theme(self, theme):
-        if self._process_mode:
-            return self._process_call("apply_theme", theme)
-        self._host.apply_theme(theme)
-
-    def set_opacity(self, opacity):
-        if self._process_mode:
-            return self._process_call("apply_opacity", opacity)
-        self._host.apply_opacity(opacity)
-
-    def start(self): self._host.start()
+        def proxy(*args):
+            return getattr(self._host, host_name)(*args)
+        return proxy
 
     def _process_call(self, name, *args, wait=False):
         self._request_id += 1
@@ -516,8 +476,15 @@ class Overlay:
         self._commands.put((request_id, name, args))
         if not wait:
             return None
+        deadline = time.time() + 5.0  # 防子进程崩溃导致主线程永久卡死
         while True:
-            response_id, error, result = self._responses.get()
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                raise TimeoutError("overlay process call timed out: %s" % name)
+            try:
+                response_id, error, result = self._responses.get(timeout=remaining)
+            except queue.Empty:
+                continue
             if response_id != request_id:
                 continue
             if error:

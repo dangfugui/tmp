@@ -4,9 +4,8 @@ const FALLBACK_SETTINGS = [
     section: '基础',
     items: [
       { key: 'orb_opacity', label: '悬浮球透明度', type: 'number', value: 1.0, min: 0.2, max: 1.0, step: 0.05 },
-      { key: 'theme', label: '主题', type: 'select', value: 'dark', options: [['dark', '深色'], ['light', '浅色']] },
+      { key: 'theme', label: '主题', type: 'select', value: 'flat', options: [['flat', '极简扁平'], ['neon', '霓虹赛博'], ['synthwave', '复古合成波'], ['glass', '液态玻璃'], ['macaron', '马卡龙奶油']] },
       { key: 'orb_size', label: '悬浮球大小', type: 'number', value: 68, min: 40, max: 96, step: 1 },
-      { key: 'autostart', label: '开机自启', type: 'bool', value: false },
     ],
   },
   {
@@ -18,22 +17,46 @@ const FALLBACK_SETTINGS = [
     ],
   },
   {
-    section: '聊天（Agent）',
+    section: '字幕（TTS）',
     items: [
-      { key: 'base_url', label: '接口地址 Base URL', type: 'text', value: 'https://api.example.com/v1' },
-      { key: 'model', label: '模型', type: 'select', value: 'gpt-4o', options: [['gpt-4o', 'gpt-4o'], ['gpt-4o-mini', 'gpt-4o-mini'], ['qwen-max', 'qwen-max']] },
-      { key: 'temperature', label: 'temperature', type: 'number', value: 0.7, min: 0, max: 2, step: 0.1 },
+      { key: 'tts_lines', label: '显示行数', type: 'select', value: '2', options: [['1', '1'], ['2', '2'], ['3', '3'], ['5', '5']] },
     ],
   },
   {
-    section: '字幕 / 识别',
+    section: '未启用',
+    collapsed: true,
     items: [
+      { key: 'language', label: '界面语言', type: 'select', value: 'zh', options: [['zh', '简体中文'], ['en', 'English']] },
+      { key: 'autostart', label: '开机自启', type: 'bool', value: false },
+      { key: 'default_mode', label: '默认打开模式', type: 'select', value: 'chat', options: [['chat', '聊天'], ['subtitle', '字幕'], ['asr', '识别']] },
+      { key: 'base_url', label: '接口地址 Base URL', type: 'text', value: 'https://api.example.com/v1' },
+      { key: 'api_key', label: 'API Key', type: 'password', value: '' },
+      { key: 'model', label: '模型', type: 'select', value: 'gpt-4o', options: [['gpt-4o', 'gpt-4o'], ['gpt-4o-mini', 'gpt-4o-mini'], ['qwen-max', 'qwen-max']] },
+      { key: 'system_prompt', label: 'System Prompt', type: 'textarea', value: '你是一个有用的桌面助手，回答尽量简洁。' },
+      { key: 'temperature', label: 'temperature', type: 'number', value: 0.7, min: 0, max: 2, step: 0.1 },
+      { key: 'max_tokens', label: '单次最大 tokens', type: 'number', value: 2048, min: 256, max: 32768, step: 256 },
+      { key: 'context_turns', label: '上下文轮数', type: 'number', value: 10, min: 1, max: 50, step: 1 },
+      { key: 'stream', label: '流式输出', type: 'bool', value: true },
       { key: 'tts_font_size', label: '字号', type: 'number', value: 18, min: 12, max: 40, step: 1 },
+      { key: 'tts_max_chars', label: '每行最大字数', type: 'number', value: 24, min: 8, max: 60, step: 1 },
+      { key: 'tts_align', label: '对齐方式', type: 'select', value: 'center', options: [['left', '左'], ['center', '居中'], ['right', '右']] },
+      { key: 'tts_hold', label: '单句停留时长(秒)', type: 'number', value: 3, min: 1, max: 20, step: 1 },
+      { key: 'tts_auto_hide', label: '播报结束自动隐藏', type: 'bool', value: true },
       { key: 'asr_language', label: '识别语言', type: 'select', value: 'auto', options: [['auto', '自动'], ['zh', '中文'], ['en', '英文']] },
+      { key: 'asr_engine', label: '识别引擎', type: 'select', value: 'whisper', options: [['whisper', 'Whisper'], ['xfyun', '讯飞'], ['local', '本地模型']] },
+      { key: 'asr_sample_rate', label: '采样率', type: 'select', value: '16000', options: [['16000', '16000'], ['44100', '44100']] },
       { key: 'asr_show_interim', label: '显示中间结果', type: 'bool', value: true },
+      { key: 'asr_silence', label: '静音自动结束(秒)', type: 'number', value: 3, min: 1, max: 15, step: 1 },
+      { key: 'asr_auto_punct', label: '自动补全标点', type: 'bool', value: true },
+      { key: 'asr_devices', label: '输入设备', type: 'list', value: ['默认麦克风'], options: ['默认麦克风', '麦克风 A', '麦克风 B'] },
+      { key: 'hotkey_chat', label: '唤起聊天', type: 'text', value: 'Ctrl+Alt+Space' },
+      { key: 'hotkey_asr', label: '开始 / 结束识别', type: 'text', value: 'Ctrl+Alt+R' },
+      { key: 'log_level', label: '日志级别', type: 'select', value: 'INFO', options: [['DEBUG', 'DEBUG'], ['INFO', 'INFO'], ['WARN', 'WARN'], ['ERROR', 'ERROR']] },
+      { key: 'data_dir', label: '数据目录', type: 'text', value: './data' },
+      { key: 'proxy', label: '代理地址', type: 'text', value: '' },
+      { key: 'features', label: '启用模块', type: 'list', value: ['chat', 'subtitle'], options: [['chat', '聊天'], ['subtitle', '字幕'], ['asr', '识别'], ['settings', '设置']] },
     ],
   },
-
 ];
 let currentSettings = [];
 
@@ -60,6 +83,7 @@ function buildProfileRow(p) {
     ['baseUrl', 'Base URL', p.baseUrl || ''],
     ['agentId', 'Agent ID', p.agentId || ''],
     ['ttsTarget', 'TTS定位', p.ttsTarget || ''],
+    ['token', 'Token', p.token || ''],
   ];
   fields.forEach(([pk, ph, val]) => {
     const td = document.createElement('td');
@@ -187,6 +211,16 @@ function renderSettings(data) {
     (section.items || []).forEach(item => list.appendChild(prepareField(item)));
     sectionEl.appendChild(list);
     body.appendChild(sectionEl);
+
+    // 「未启用」等标记 collapsed 的分组：默认折叠，点击标题展开/收起
+    if (section.collapsed) {
+      title.classList.add('collapsible', 'collapsed');
+      list.classList.add('hidden');
+      title.addEventListener('click', () => {
+        const collapsed = list.classList.toggle('hidden');
+        title.classList.toggle('collapsed', collapsed);
+      });
+    }
   });
 }
 
@@ -212,7 +246,7 @@ function readFormValues() {
         const obj = {};
         row.querySelectorAll('input[data-pk]').forEach((inp) => { obj[inp.dataset.pk] = inp.value.trim(); });
         return obj;
-      }).filter((o) => o.chatName || o.urlRegex || o.baseUrl || o.agentId || o.ttsTarget);
+      }).filter((o) => o.chatName || o.urlRegex || o.baseUrl || o.agentId || o.ttsTarget || o.token);
     } else {
       val = node.value;
       if (node.type === 'checkbox') val = node.checked;

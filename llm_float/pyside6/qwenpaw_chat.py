@@ -44,6 +44,9 @@ def get_local_ip():
 
 QWENPAW_BASE_URL = os.environ.get("QWENPAW_BASE_URL", "http://localhost:8088")
 QWENPAW_AGENT_ID = os.environ.get("QWENPAW_AGENT_ID", "default")
+# 启用 Web 认证时（QWENPAW_AUTH_ENABLED=true，远程访问必填）：
+# Authorization: Bearer <token>；本地 localhost 自动跳过认证，可留空
+QWENPAW_TOKEN = os.environ.get("QWENPAW_TOKEN", "")
 QWENPAW_SESSION_ID = os.environ.get("QWENPAW_SESSION_ID", "overlay-" + get_local_ip())
 QWENPAW_USER_ID = os.environ.get("QWENPAW_USER_ID", "overlay-user")
 QWENPAW_TIMEOUT = float(os.environ.get("QWENPAW_TIMEOUT", "60"))
@@ -132,18 +135,21 @@ def _response_text(event):
     return "".join(parts)
 
 
-def stream_chat(text, on_text, on_done, on_error, base_url=None, agent_id=None):
+def stream_chat(text, on_text, on_done, on_error, base_url=None, agent_id=None, stop_event=None, token=None):
     """阻塞执行一次流式对话（请在后台线程调用）。
 
     回调约定：
         on_text(累计文本)  收到新的流式增量（携带的是当前累计文本）
-        on_done(最终文本)  回复结束（正常完成）
+        on_done(最终文本)  回复结束（正常完成 / 用户点击停止，按已接收内容收尾）
         on_error(错误信息) 请求失败 / 模型失败
 
-    base_url / agent_id：按网址匹配的聊天配置（可省略，省略用模块默认常量）。
+    base_url / agent_id / token：按网址匹配的聊天配置（可省略，省略用模块默认常量）。
+    token：启用 QwenPaw Web 认证时的 Bearer token；为空则不携带 Authorization 头（本地可免认证）。
+    stop_event：可选 threading.Event；置位后断开 SSE 连接并停止接收（点击「停止」按钮）。
     """
     base_url = (base_url or QWENPAW_BASE_URL).rstrip("/")
     agent_id = agent_id or QWENPAW_AGENT_ID
+    token = token or QWENPAW_TOKEN  # 配置留空时回退环境变量
     payload = {
         "input": [{"role": "user", "content": [{"type": "text", "text": text}]}],
         "session_id": QWENPAW_SESSION_ID,
@@ -151,6 +157,8 @@ def stream_chat(text, on_text, on_done, on_error, base_url=None, agent_id=None):
         "channel": "console",
     }
     headers = {"Content-Type": "application/json", "X-Agent-Id": agent_id}
+    if token:
+        headers["Authorization"] = "Bearer " + token
     request = urllib.request.Request(
         base_url + "/api/console/chat",
         data=json.dumps(payload).encode("utf-8"),
@@ -167,6 +175,8 @@ def stream_chat(text, on_text, on_done, on_error, base_url=None, agent_id=None):
     try:
         with urllib.request.urlopen(request, timeout=QWENPAW_TIMEOUT) as response:
             for raw in response:
+                if stop_event is not None and stop_event.is_set():
+                    break  # 用户点击「停止」：断开连接，按已接收内容收尾
                 line = raw.decode("utf-8", "replace").strip()
                 if not line.startswith("data:"):
                     continue
@@ -246,15 +256,33 @@ def start_chat(host, text):
             profile = None
     base_url = (profile or {}).get("baseUrl") or QWENPAW_BASE_URL
     agent_id = (profile or {}).get("agentId") or QWENPAW_AGENT_ID
+    token = (profile or {}).get("token") or QWENPAW_TOKEN
     if profile:
         logger.info("qwenpaw chat profile: %s (%s) -> %s / %s",
                     (profile.get("chatName") or "?"), (profile.get("urlRegex") or "?"), base_url, agent_id)
     logger.info("qwenpaw chat start: %s", text[:50])
+    # 停止句柄：前端点「停止」时置位，SSE 循环下一行检测后断开连接
+    stop_event = threading.Event()
+    host._chat_stop_event = stop_event
     threading.Thread(
         target=stream_chat,
-        args=(text, on_text, on_done, on_error, base_url, agent_id),
+        args=(text, on_text, on_done, on_error, base_url, agent_id, stop_event, token),
         daemon=True,
     ).start()
+
+
+def stop_chat(host):
+    """停止当前正在进行的 QwenPaw 回复（线程安全，幂等）。
+
+    返回 True 表示已请求停止；无进行中的请求或非 QwenPaw 模式返回 False。
+    """
+    event = getattr(host, "_chat_stop_event", None)
+    if event is None:
+        logger.info("stop_chat: no active request")
+        return False
+    event.set()
+    logger.info("stop_chat: stop event set")
+    return True
 
 
 def create_chat_handler(host_provider):

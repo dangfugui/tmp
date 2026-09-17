@@ -337,6 +337,26 @@ function scheduleBotRender() {
   });
 }
 
+function setBusy(v) {
+  // 等待回复时按钮切换为可点击的「停止」
+  busy = v;
+  sendBtn.classList.toggle("stop", v);
+  sendBtn.title = v ? "停止" : "发送";
+}
+
+function stopSend() {
+  // 点击「停止」：通知 Python 断开当前回复，本地立即收尾（后续 done 推送幂等）
+  console.log("stop_chat requested");
+  if (api && typeof api.stop_chat === "function") {
+    try { api.stop_chat(); } catch (err) { console.error("stop_chat failed:", err); }
+  }
+  removeTyping();
+  botEl = null;
+  pendingBotText = null;
+  setBusy(false);
+  inputEl.focus();
+}
+
 function finishReply(error) {
   removeTyping();
   if (botEl && pendingBotText !== null) {
@@ -344,8 +364,7 @@ function finishReply(error) {
     pendingBotText = null;
   }
   botEl = null;
-  busy = false;
-  sendBtn.disabled = false;
+  setBusy(false);
   inputEl.focus();
   if (error) addMessage("bot", error);
 }
@@ -356,6 +375,17 @@ function finishReply(error) {
      { role: "bot", text: "...", done: true }    回复结束
      { role: "bot", error: "..." }               出错（等价 done）        */
 window.assistant = window.assistant || {};
+window.assistant.onUserMessage = function (payload) {
+  // open_chat(send) 等入口推送的用户消息：显示为用户气泡
+  if (!payload || !payload.text) return;
+  addMessage("user", String(payload.text));
+};
+
+window.assistant.onChatBusy = function (payload) {
+  // 回复期间按钮切换为「停止」（open_chat(send) 等 Python 侧入口推送）
+  setBusy(!!(payload && payload.busy));
+};
+
 window.assistant.onChatMessage = function (payload) {
   if (!payload) return;
   if (payload.error) {
@@ -377,6 +407,7 @@ window.assistant.onChatMessage = function (payload) {
 
   // 流式增量
   removeTyping();
+  if (!busy) setBusy(true); // 兜底：任何入口进入回复状态，按钮自动切为「停止」
   pendingBotText = text;
   if (!botEl) {
     botEl = el("div", "msg bot");
@@ -395,8 +426,7 @@ function send() {
   inputEl.value = "";
   autoResize();
 
-  busy = true;
-  sendBtn.disabled = true;
+  setBusy(true);
   showTyping();
 
   // 有 Python 后端：触发后端（同步返回很快），流式回复由 onChatMessage 推送
@@ -415,8 +445,7 @@ function send() {
   setTimeout(() => {
     removeTyping();
     addMessage("bot", MOCK_REPLIES[Math.floor(Math.random() * MOCK_REPLIES.length)]);
-    busy = false;
-    sendBtn.disabled = false;
+    setBusy(false);
     inputEl.focus();
   }, 500 + Math.random() * 500);
 }
@@ -434,7 +463,10 @@ inputEl.addEventListener("keydown", (e) => {
     send();
   }
 });
-sendBtn.addEventListener("click", send);
+sendBtn.addEventListener("click", () => {
+  if (busy) { stopSend(); return; }
+  send();
+});
 
 /* ---------- titlebar drag (native window move) ---------- */
 titlebarEl.addEventListener("mousedown", (e) => {

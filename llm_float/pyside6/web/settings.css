@@ -121,6 +121,24 @@ body {
   border-radius: 0 3px 3px 0;
   opacity: .85;
 }
+/* 可折叠分组（未启用等） */
+.section h3.collapsible {
+  cursor: pointer;
+  user-select: none;
+}
+.section h3.collapsible:hover { color: var(--text-primary); }
+.section h3.collapsible::after {
+  content: "▾";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--text-secondary);
+  transition: transform .15s;
+}
+.section h3.collapsed::after { transform: translateY(-50%) rotate(-90deg); }
+.field-list.hidden { display: none; }
 
 .field-list { display: flex; flex-direction: column; }
 .field {
