@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>llm_float · 悬浮球风格选型（10 组）</title>
+<link rel="stylesheet" href="ui/theme.css">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 36px 30px 80px;
+    background: radial-gradient(1200px 700px at 20% -10%, #1c2240 0%, #0c0f1c 55%, #080a12 100%);
+    color: #eef1f8;
+    font-family: "Segoe UI", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  .sub { color: #98a2b8; font-size: 14px; margin-bottom: 10px; }
+  .sub b { color: #a5b4fc; }
+
+  /* 选中提示条 */
+  #picked {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0 20px;
+    padding: 12px 18px;
+    border-radius: 14px;
+    background: rgba(109, 124, 255, .14);
+    border: 1px solid rgba(109, 124, 255, .5);
+    backdrop-filter: blur(12px);
+    font-size: 14px;
+    color: #dde3ff;
+  }
+  #picked.show { display: flex; }
+  #picked .tag {
+    background: var(--pick-c, #6d7cff);
+    color: #fff;
+    font-weight: 700;
+    padding: 2px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+  }
+
+  .grid { display: flex; flex-wrap: wrap; gap: 22px; }
+
+  /* 风格卡片 */
+  .style-card {
+    flex: 1 1 430px;
+    max-width: 560px;
+    border-radius: 18px;
+    padding: 18px 18px 14px;
+    background: rgba(255, 255, 255, .045);
+    border: 1.5px solid rgba(255, 255, 255, .1);
+    cursor: pointer;
+    transition: border-color .2s, background .2s, transform .15s;
+  }
+  .style-card:hover { border-color: rgba(109, 124, 255, .55); background: rgba(109, 124, 255, .07); }
+  .style-card.selected {
+    border-color: #6d7cff;
+    background: rgba(109, 124, 255, .12);
+    box-shadow: 0 0 0 3px rgba(109, 124, 255, .22), 0 16px 40px rgba(0,0,0,.35);
+  }
+  .style-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .style-no {
+    font-size: 12px;
+    font-weight: 700;
+    color: #0c0f1c;
+    background: #c7d2fe;
+    border-radius: 7px;
+    padding: 2px 8px;
+  }
+  .style-name { font-size: 15px; font-weight: 700; }
+  .style-desc { font-size: 12.5px; color: #98a2b8; margin-bottom: 14px; line-height: 1.5; }
+
+  .orb-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .orb-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .orb-box { width: 62px; height: 62px; }
+  .orb-label { font-size: 10.5px; color: #98a2b8; letter-spacing: .02em; }
+
+  .foot-note {
+    margin-top: 40px;
+    padding: 16px 20px;
+    border: 1px dashed rgba(139, 92, 246, .5);
+    border-radius: 14px;
+    background: rgba(109, 124, 255, .06);
+    font-size: 13.5px;
+    color: #c4b5fd;
+    line-height: 1.8;
+  }
+</style>
+
+<!-- ============ 悬浮球通用基础（五态图标切换 / 通用结构） ============ -->
+<style>
+  .orb {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border: var(--orb-border, none);
+    border-radius: 50%;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    outline: none;
+    padding: 0;
+    background: var(--orb-idle-bg, #6d7cff);
+    color: var(--orb-idle-color, #fff);
+    box-shadow: var(--orb-idle-shadow, none);
+    transition: transform .18s ease;
+  }
+  .orb:hover { transform: scale(1.07); }
+  .orb:active { transform: scale(.95); }
+
+  .orb .glass { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; background: var(--orb-glass-bg, none); }
+
+  /* 五态配色全部由 ui/theme.css 的 --orb-* 变量驱动（与插件悬浮球一致） */
+  .orb[data-state="chat"] {
+    background: var(--orb-chat-bg, var(--orb-idle-bg));
+    color: var(--orb-chat-color, var(--orb-idle-color));
+    box-shadow: var(--orb-chat-shadow, var(--orb-idle-shadow));
+  }
+  .orb[data-state="settings"] {
+    background: var(--orb-settings-bg, var(--orb-idle-bg));
+    color: var(--orb-settings-color, var(--orb-idle-color));
+    box-shadow: var(--orb-settings-shadow, var(--orb-idle-shadow));
+  }
+  .orb[data-state="tts"] {
+    background: var(--orb-tts-bg, var(--orb-idle-bg));
+    color: var(--orb-tts-color, var(--orb-idle-color));
+    box-shadow: var(--orb-tts-shadow, var(--orb-idle-shadow));
+  }
+  .orb[data-state="asr"] {
+    background: var(--orb-asr-bg, var(--orb-idle-bg));
+    color: var(--orb-asr-color, var(--orb-idle-color));
+    box-shadow: var(--orb-asr-shadow, var(--orb-idle-shadow));
+  }
+
+  .state-icon {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    transform: scale(.5) rotate(-10deg);
+    transition: opacity .22s ease, transform .3s cubic-bezier(.34, 1.56, .64, 1);
+    pointer-events: none;
+  }
+  .state-icon svg { width: 24px; height: 24px; }
+  .orb[data-state="idle"] .icon-idle,
+  .orb[data-state="chat"] .icon-chat,
+  .orb[data-state="settings"] .icon-settings,
+  .orb[data-state="tts"] .icon-tts,
+  .orb[data-state="asr"] .icon-asr {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+
+  /* 动效层（通用结构，颜色继承 currentColor） */
+  .fx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s ease; }
+  .orb[data-state="asr"] .fx-asr { opacity: 1; }
+  .orb[data-state="tts"] .fx-tts { opacity: 1; }
+  .fx-asr .ring {
+    position: absolute; inset: -3px; border-radius: 50%;
+    border: 2.5px solid currentColor; opacity: 0;
+    animation: asrPing 1.7s cubic-bezier(0, .55, .4, 1) infinite;
+  }
+  .fx-asr .ring.r2 { animation-delay: .85s; }
+  @keyframes asrPing { 0% { transform: scale(.92); opacity: .8; } 100% { transform: scale(1.5); opacity: 0; } }
+  .fx-tts .note {
+    position: absolute; width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor; opacity: 0;
+    animation: ttsNote 1.6s ease-out infinite;
+  }
+  .fx-tts .note.n1 { top: 32%; left: 26%; }
+  .fx-tts .note.n2 { top: 22%; left: 48%; animation-delay: .5s; }
+  .fx-tts .note.n3 { top: 30%; right: 20%; animation-delay: 1s; }
+  @keyframes ttsNote {
+    0% { transform: translateY(4px) scale(.6); opacity: 0; }
+    30% { opacity: 1; }
+    100% { transform: translateY(-20px) scale(1.3); opacity: 0; }
+  }
+
+  /* 通用动效关键帧 */
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  @keyframes glowPulse { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
+  @keyframes bounce { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-7px); } 60% { transform: translateY(-3px); } }
+</style>
+
+<!-- ============ G1 液态玻璃 ============ -->
+<style>
+
+  .g1 .state-icon svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.35)); }
+  .g1 .orb[data-state="idle"] { animation: breathe 3.2s ease-in-out infinite; }
+  .g1 .orb[data-state="chat"] .icon-chat svg { animation: bob 2.4s ease-in-out infinite; }
+  .g1 .orb[data-state="settings"] .icon-settings svg { animation: spin 6s linear infinite; transform-origin: center; }
+  .g1 .orb[data-state="tts"] .icon-tts svg { animation: glowPulse .9s ease-in-out infinite; }
+  .g1 .orb[data-state="asr"] .icon-asr svg { animation: glowPulse 1.1s ease-in-out infinite; }
+
+</style>
+
+<!-- ============ G2 极简扁平 ============ -->
+<style>
+
+  .g2 .state-icon svg { width: 25px; height: 25px; stroke-width: 2; }
+  .g2 .orb[data-state="chat"] .icon-chat svg { animation: bob 2.4s ease-in-out infinite; }
+  .g2 .orb[data-state="settings"] .icon-settings svg { animation: spin 7s linear infinite; transform-origin: center; }
+  .g2 .orb[data-state="tts"] .icon-tts svg { animation: glowPulse .9s ease-in-out infinite; }
+
+</style>
+
+<!-- ============ G3 霓虹赛博 ============ -->
+<style>
+
+  .g3 .state-icon svg { filter: drop-shadow(0 0 5px currentColor); }
+  .g3 .orb[data-state="idle"] { animation: glowPulse 2.6s ease-in-out infinite; }
+  .g3 .orb[data-state="chat"] .icon-chat svg { animation: bob 2.2s ease-in-out infinite; }
+  .g3 .orb[data-state="settings"] .icon-settings svg { animation: spin 5s linear infinite; transform-origin: center; }
+
+</style>
+
+<!-- ============ G4 马卡龙奶油 ============ -->
+<style>
+
+  .g4 .state-icon svg { filter: drop-shadow(0 1px 2px rgba(0,0,0,.15)); }
+  .g4 .orb[data-state="idle"] { animation: breathe 3.6s ease-in-out infinite; }
+  .g4 .orb[data-state="chat"] .icon-chat svg { animation: bob 2.6s ease-in-out infinite; }
+  .g4 .orb[data-state="settings"] .icon-settings svg { animation: spin 8s linear infinite; transform-origin: center; }
+  .g4 .orb[data-state="asr"] .icon-asr svg { animation: glowPulse 1.2s ease-in-out infinite; }
+
+</style>
+
+<!-- ============ G5 金属质感 ============ -->
+<style>
+
+  .g5 .state-icon svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.4)); }
+  .g5 .orb[data-state="idle"] { animation: glowPulse 3s ease-in-out infinite; }
+  .g5 .orb[data-state="settings"] .icon-settings svg { animation: spin 6s linear infinite; transform-origin: center; }
+  .g5 .orb[data-state="chat"] .icon-chat svg { animation: bob 2.4s ease-in-out infinite; }
+
+</style>
+
+<!-- ============ G6 活力糖果 ============ -->
+<style>
+
+  .g6 .state-icon svg { width: 26px; height: 26px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.25)); }
+  .g6 .orb[data-state="idle"] .icon-idle svg { animation: bounce 2.8s ease-in-out infinite; }
+  .g6 .orb[data-state="chat"] .icon-chat svg { animation: bob 2s ease-in-out infinite; }
+  .g6 .orb[data-state="settings"] .icon-settings svg { animation: spin 5s linear infinite; transform-origin: center; }
+  .g6 .orb[data-state="asr"] .icon-asr svg { animation: glowPulse 1s ease-in-out infinite; }
+
+</style>
+
+<!-- ============ G7 莫兰迪雅致 ============ -->
+<style>
+
+  .g7 .state-icon svg { width: 22px; height: 22px; stroke-width: 2; }
+  .g7 .orb[data-state="idle"] { animation: breathe 3.8s ease-in-out infinite; }
+  .g7 .orb[data-state="settings"] .icon-settings svg { animation: spin 9s linear infinite; transform-origin: center; }
+  .g7 .orb[data-state="chat"] .icon-chat svg { animation: bob 3s ease-in-out infinite; }
+
+</style>
+
+<!-- ============ G8 复古合成波 ============ -->
+<style>
+
+  .g8 .state-icon svg { filter: drop-shadow(0 0 5px currentColor); }
+  .g8 .orb[data-state="idle"] { animation: glowPulse 2.4s ease-in-out infinite; }
+  .g8 .orb[data-state="chat"] .icon-chat svg { animation: bob 2.2s ease-in-out infinite; }
+  .g8 .orb[data-state="settings"] .icon-settings svg { animation: spin 5s linear infinite; transform-origin: center; }
+
+</style>
+
+<!-- ============ G9 自然绿意 ============ -->
+<style>
+
+  .g9 .state-icon svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.35)); }
+  .g9 .orb[data-state="idle"] { animation: breathe 3.4s ease-in-out infinite; }
+  .g9 .orb[data-state="chat"] .icon-chat svg { animation: bob 2.6s ease-in-out infinite; }
+  .g9 .orb[data-state="settings"] .icon-settings svg { animation: spin 7s linear infinite; transform-origin: center; }
+  .g9 .orb[data-state="tts"] .icon-tts svg { animation: glowPulse .9s ease-in-out infinite; }
+
+</style>
+
+<!-- ============ G10 黑白极简 ============ -->
+<style>
+
+  .g10 .state-icon svg { width: 25px; height: 25px; stroke-width: 2.1; }
+  .g10 .orb[data-state="idle"] { animation: glowPulse 3.2s ease-in-out infinite; }
+  .g10 .orb[data-state="chat"] .icon-chat svg { animation: bob 2.4s ease-in-out infinite; }
+  .g10 .orb[data-state="settings"] .icon-settings svg { animation: spin 6s linear infinite; transform-origin: center; }
+  .g10 .orb[data-state="asr"] .icon-asr svg { animation: glowPulse 1.1s ease-in-out infinite; }
+
+</style>
+</head>
+<body data-theme="glass">
+
+  <h1>悬浮球风格选型</h1>
+  <div class="sub">共 <b>10 组</b>风格，每组展示五态：静默 / 聊天 / 设置 / 字幕 / 识别。点击卡片即可选中，选好告诉我编号即可。</div>
+
+  <div id="picked">
+    <span class="tag" id="picked-tag">—</span>
+    <span id="picked-text"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="foot-note">
+    说明：以上 10 组悬浮球风格已全部落地为插件主题，在「设置 → 主题」下拉中即可切换（液态玻璃 / 极简扁平 / 霓虹赛博 / 马卡龙奶油 / 金属质感 / 活力糖果 / 莫兰迪雅致 / 复古合成波 / 自然绿意 / 黑白极简）。
+  </div>
+
+<script src="design-preview.js"></script>
+</body>
+</html>

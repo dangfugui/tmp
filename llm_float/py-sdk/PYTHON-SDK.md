@@ -103,6 +103,7 @@ SDK 协议**不是另一套命名**，而是 JS 现有代码的**直接映射**�
 | `setEnabled`           | `{ "enabled": true }`                     | `content.setEnabled()` / 广播 `llm_set_orb_enabled`                                              |
 | `showChat`             | `{ "send": "你好" }`（可选）                    | `content.showChat()`；`send` 非空 → `chat.sendText(text)`                                         |
 | `hideChat`             | `{}`                                      | `content.hideChat()`                                                                           |
+| `hideAll`              | `{}`                                      | 一键收起全部弹窗（聊天窗/字幕气泡/识别气泡），只留悬浮球                                                   |
 | `sendText`             | `{ "text": "你好" }`                        | `chat.sendText(text)`（新增：显示用户气泡 + `qwenChat`）                                                  |
 | `stopChat`             | `{}`                                      | `chat.stopChat()`（新增：等效 `stopSend()`/AbortController）                                          |
 | `setActiveChatProfile` | `{ "name": "Qwen" }`                      | 消息 `llm_manual_profile` / `assistant.setActiveChatProfile`                                     |
@@ -113,14 +114,26 @@ SDK 协议**不是另一套命名**，而是 JS 现有代码的**直接映射**�
 | `setAsrText`           | `{ "text": "..." }`                      | 驱动流式识别：推送 `onAsrPartial`（多次调用展示中间结果，自动打开气泡）                                              |
 | `endAsr`               | `{ "text": "..." }`（可选）                | 结束识别：推送 `onAsrFinal`（缺省用最后一次 setAsrText 文本）+ 收起气泡                                      |
 | `stopAsr`              | `{}`                                      | `content.stopAsr()`                                                                            |
-| `setTheme`             | `{ "theme": "neon" }`                     | `assistant.setTheme` / storage `theme`                                                         |
+| `setTheme`             | `{ "theme": "glass" }`                    | `assistant.setTheme` / storage `theme`；可选值见下「主题列表」                                       |
 | `setOrbSize`           | `{ "orb_size": 72 }`                      | `assistant.setOrbSize` / storage `orb_size`                                                    |
 | `setOrbOpacity`        | `{ "orb_opacity": 0.8 }`                  | `assistant.setOpacity` / storage `orb_opacity`                                                 |
 | `getState`             | `{}`                                      | 返回 `uiState` 快照（见 §3.3）                                                                        |
 | `getConfig`            | `{}`                                      | 读 storage 全部配置（theme/orb_size/orb_opacity/orb_enabled/chat_profiles/active_profile_name） |
-| `setConfig`            | `{ "theme": "neon", "orb_size": 72 }`     | 写 storage + 广播 `llm_config_updated`（等效设置页保存）                                                   |
+| `setConfig`            | `{ "theme": "glass", "orb_size": 72 }`    | 写 storage + 广播 `llm_config_updated`（等效设置页保存）                                                   |
 | `ping`                 | `{}`                                      | 保活 / 连通性检查
 | `getTabs`             | `{}`                                      | 列出全部可注入页面（http/https）`[{id,title,url}]`，供多页面演示遍历                                                                                     |
+
+**主题列表**（`setTheme` / `setConfig` 的 `theme` 可选值，与设置页下拉及预览页 G1~G10 一一对应）：
+
+| theme | 名称 | | theme | 名称 |
+|---|---|---|---|---|
+| `glass` | 液态玻璃 (G1) | | `candy` | 活力糖果 (G6) |
+| `flat` | 极简扁平 (G2) | | `morandi` | 莫兰迪雅致 (G7) |
+| `neon` | 霓虹赛博 (G3) | | `synthwave` | 复古合成波 (G8) |
+| `macaron` | 马卡龙奶油 (G4) | | `green` | 自然绿意 (G9) |
+| `metal` | 金属质感 (G5) | | `mono` | 黑白极简 (G10) |
+
+旧值 `dark` / `blue` / `light` 已停用（仍可传入，会被自动映射为 `flat`）。
 
 **响应**（扩展 → Python，`id` 回填）：
 
@@ -274,11 +287,11 @@ asyncio.run(main())
 
 ### 4.2 完整方法清单（= §3.1 命令）
 
-`ping` / `getTabs` / `setEnabled` / `showChat(send=)` / `hideChat` / `sendText` / `stopChat` / `setActiveChatProfile` / `speakText` / `stopSpeak` / `runDemo(type, text=)` / `startAsr` / `setAsrText` / `endAsr` / `stopAsr` / `setTheme` / `setOrbSize` / `setOrbOpacity` / `getState` / `getConfig` / `setConfig(**kw)`
+`ping` / `getTabs` / `setEnabled` / `showChat(send=)` / `hideChat` / `hideAll` / `sendText` / `stopChat` / `setActiveChatProfile` / `speakText` / `stopSpeak` / `runDemo(type, text=)` / `startAsr` / `setAsrText` / `endAsr` / `stopAsr` / `setTheme` / `setOrbSize` / `setOrbOpacity` / `getState` / `getConfig` / `setConfig(**kw)`
 
 事件：`uiState` / `onChatMessage` / `chatOpened` / `chatClosed` / `onTtsSentence` / `onTtsIdle` / `onAsrPartial` / `onAsrFinal` / `onAsrState` / `orbState` / `bubbleShown` / `bubbleHidden` / `configChanged`
 
-## 5. 扩展侧接入层（已实施 · v0.6.1）
+## 5. 扩展侧接入层（已实施 · v0.6.32）
 
 > **自动注入**（v0.6.1 起）：命令到达未注入页面时，background 自动用 `chrome.scripting` 注入 content script（需 `scripting` 权限），演示模式无需手动刷新每个页面；注入失败才会报错。
 

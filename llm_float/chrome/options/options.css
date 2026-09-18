@@ -387,3 +387,18 @@ body {
   color: #fff;
   box-shadow: 0 2px 8px var(--focus-ring, rgba(99, 102, 241, .35));
 }
+
+/* 主题预览按钮 */
+.theme-preview-btn {
+  margin-left: 10px;
+  padding: 7px 14px;
+  border: 1px solid var(--input-border, rgba(255,255,255,.2));
+  border-radius: 10px;
+  background: var(--bg-glass-strong, rgba(255,255,255,.1));
+  color: var(--text-primary, #eef1f8);
+  font-size: 13px;
+  cursor: pointer;
+  transition: filter .15s, transform .1s;
+}
+.theme-preview-btn:hover { filter: brightness(1.12); }
+.theme-preview-btn:active { transform: scale(.97); }

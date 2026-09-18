@@ -6,7 +6,7 @@ const STORAGE_SCHEMA = [
     section: '基础',
     items: [
       { key: 'orb_opacity', label: '悬浮球透明度', type: 'number', value: 1.0, min: 0.2, max: 1.0, step: 0.05 },
-      { key: 'theme', label: '主题', type: 'select', value: 'flat', options: [['flat', '极简扁平'], ['neon', '霓虹赛博'], ['synthwave', '复古合成波'], ['glass', '液态玻璃'], ['macaron', '马卡龙奶油'], ['dark', '深色'], ['blue', '蓝色'], ['light', '浅色']] },
+      { key: 'theme', label: '主题', type: 'select', value: 'glass', options: [['glass', '液态玻璃'], ['flat', '极简扁平'], ['neon', '霓虹赛博'], ['macaron', '马卡龙奶油'], ['metal', '金属质感'], ['candy', '活力糖果'], ['morandi', '莫兰迪雅致'], ['synthwave', '复古合成波'], ['green', '自然绿意'], ['mono', '黑白极简']] },
       { key: 'orb_size', label: '悬浮球大小', type: 'number', value: 68, min: 40, max: 96, step: 1 },
     ],
   },
@@ -98,8 +98,13 @@ function showToast(msg, timeout = 1600) {
   showToast.timer = setTimeout(() => toast.classList.remove('show'), timeout);
 }
 
+/* 旧版主题名兼容：dark/blue/light 已从 10 组主题中移除，映射到 flat */
+function normalizeTheme(t) {
+  return (t === 'dark' || t === 'blue' || t === 'light') ? 'flat' : (t || 'flat');
+}
+
 function applyTheme(theme) {
-  document.body.dataset.theme = theme || 'flat';
+  document.body.dataset.theme = normalizeTheme(theme);
 }
 
 /* ---------- 表单渲染 ---------- */
@@ -168,7 +173,26 @@ function prepareField(item) {
       if (String(item.value) === String(value)) option.selected = true;
       select.appendChild(option);
     }
+    if (item.key === 'theme') {
+      select.style.flex = '1 1 auto';
+      select.style.width = 'auto';
+      select.style.minWidth = '150px';
+      controlWrap.style.display = 'flex';
+      controlWrap.style.alignItems = 'center';
+      controlWrap.style.gap = '10px';
+    }
     controlWrap.appendChild(select);
+    if (item.key === 'theme') {
+      const preview = document.createElement('button');
+      preview.type = 'button';
+      preview.className = 'theme-preview-btn';
+      preview.textContent = '预览主题';
+      preview.title = '打开 10 组悬浮球风格预览页';
+      preview.addEventListener('click', () => {
+        try { chrome.tabs.create({ url: chrome.runtime.getURL('design_preview.html') }); } catch (e) { /* 忽略 */ }
+      });
+      controlWrap.appendChild(preview);
+    }
   } else if (item.type === 'textarea') {
     const textarea = document.createElement('textarea');
     textarea.dataset.key = item.key;
@@ -279,7 +303,7 @@ function mergeWithStorage(schema, values) {
     segment: section.segmentKey ? (values && values[section.segmentKey] !== undefined ? String(values[section.segmentKey]) : (section.segmentDefault || (section.segmentOptions && section.segmentOptions[0] ? section.segmentOptions[0][0] : ""))) : undefined,
     items: (section.items || []).map(item => ({
       ...item,
-      value: values && values[item.key] !== undefined ? values[item.key] : item.value,
+      value: (item.key === 'theme' ? normalizeTheme(values && values[item.key] !== undefined ? values[item.key] : item.value) : (values && values[item.key] !== undefined ? values[item.key] : item.value)),
     })),
   }));
 }

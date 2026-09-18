@@ -7,7 +7,7 @@
 
 /* ================= dark（默认）================= */
 :root,
-body[data-theme="dark"] {
+[data-theme="dark"] {
   --bg-card: rgba(16, 18, 26, 0.88);
   --bg-glass: rgba(255, 255, 255, 0.045);
   --bg-glass-strong: rgba(255, 255, 255, 0.09);
@@ -44,10 +44,14 @@ body[data-theme="dark"] {
   --orb-asr-color: #fff;
   --orb-asr-glow: rgba(52, 211, 153, .48);
   --orb-asr-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 3px 8px rgba(0,0,0,.28), 0 0 22px var(--orb-asr-glow);
+  --orb-settings-bg: radial-gradient(circle at 30% 24%, rgba(255,255,255,.32), rgba(255,255,255,0) 46%), linear-gradient(135deg, #2fd4cf 0%, #0fb6c9 55%, #0e9bb8 100%);
+  --orb-settings-color: #fff;
+  --orb-settings-glow: rgba(56, 189, 208, .45);
+  --orb-settings-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 0 22px rgba(56,189,208,.45);
 }
 
 /* ================= blue（蓝色）================= */
-body[data-theme="blue"] {
+[data-theme="blue"] {
   --bg-card: rgba(12, 21, 29, 0.88);
   --bg-glass: rgba(120, 202, 230, 0.06);
   --bg-glass-strong: rgba(120, 202, 230, 0.12);
@@ -84,10 +88,14 @@ body[data-theme="blue"] {
   --orb-asr-color: #fff;
   --orb-asr-glow: rgba(94, 234, 212, .45);
   --orb-asr-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 0 22px var(--orb-asr-glow);
+  --orb-settings-bg: radial-gradient(circle at 30% 24%, rgba(255,255,255,.3), rgba(255,255,255,0) 46%), linear-gradient(135deg, #5eead4 0%, #14b8a6 55%, #0f766e 100%);
+  --orb-settings-color: #fff;
+  --orb-settings-glow: rgba(94, 234, 212, .45);
+  --orb-settings-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 0 22px rgba(94,234,212,.45);
 }
 
 /* ================= light（浅色）================= */
-body[data-theme="light"] {
+[data-theme="light"] {
   --bg-card: rgba(255, 255, 255, 0.9);
   --bg-glass: rgba(15, 23, 42, 0.035);
   --bg-glass-strong: rgba(15, 23, 42, 0.07);
@@ -123,10 +131,14 @@ body[data-theme="light"] {
   --orb-asr-color: #fff;
   --orb-asr-glow: rgba(16, 185, 129, .35);
   --orb-asr-shadow: 0 1px 1px rgba(255,255,255,.4) inset, 0 8px 20px rgba(40,60,110,.22), 0 0 18px var(--orb-asr-glow);
+  --orb-settings-bg: radial-gradient(circle at 30% 24%, rgba(255,255,255,.5), rgba(255,255,255,0) 46%), linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%);
+  --orb-settings-color: #fff;
+  --orb-settings-glow: rgba(45, 212, 191, .35);
+  --orb-settings-shadow: 0 1px 1px rgba(255,255,255,.4) inset, 0 8px 20px rgba(40,60,110,.22), 0 0 18px rgba(45,212,191,.35);
 }
 
 /* ================= flat（极简扁平 · G2）================= */
-body[data-theme="flat"] {
+[data-theme="flat"] {
   --bg-card: rgba(23, 25, 31, 0.96);
   --bg-glass: rgba(255, 255, 255, 0.04);
   --bg-glass-strong: rgba(255, 255, 255, 0.08);
@@ -163,10 +175,14 @@ body[data-theme="flat"] {
   --orb-asr-color: #fff;
   --orb-asr-glow: rgba(34, 197, 94, .35);
   --orb-asr-shadow: 0 6px 16px rgba(0, 0, 0, .3);
+  --orb-settings-bg: #14b8a6;
+  --orb-settings-color: #fff;
+  --orb-settings-glow: rgba(20, 184, 166, .35);
+  --orb-settings-shadow: 0 6px 16px rgba(0, 0, 0, .3);
 }
 
 /* ================= neon（霓虹赛博 · G3）================= */
-body[data-theme="neon"] {
+[data-theme="neon"] {
   --bg-card: rgba(11, 11, 20, 0.94);
   --bg-glass: rgba(34, 211, 238, 0.06);
   --bg-glass-strong: rgba(34, 211, 238, 0.12);
@@ -203,10 +219,14 @@ body[data-theme="neon"] {
   --orb-asr-color: #4ade80;
   --orb-asr-glow: rgba(74, 222, 128, .5);
   --orb-asr-shadow: 0 0 6px #4ade80, 0 0 16px rgba(74,222,128,.6), 0 0 34px rgba(74,222,128,.32), inset 0 0 12px rgba(74,222,128,.22), 0 8px 20px rgba(0,0,0,.5);
+  --orb-settings-bg: #0b0b14;
+  --orb-settings-color: #e879f9;
+  --orb-settings-glow: rgba(232, 121, 249, .5);
+  --orb-settings-shadow: 0 0 6px #e879f9, 0 0 16px rgba(232,121,249,.6), 0 0 34px rgba(232,121,249,.32), inset 0 0 12px rgba(232,121,249,.22), 0 8px 20px rgba(0,0,0,.5);
 }
 
 /* ================= synthwave（复古合成波 · G8）================= */
-body[data-theme="synthwave"] {
+[data-theme="synthwave"] {
   --bg-card: rgba(21, 15, 46, 0.92);
   --bg-glass: rgba(168, 85, 247, 0.07);
   --bg-glass-strong: rgba(168, 85, 247, 0.14);
@@ -245,10 +265,14 @@ body[data-theme="synthwave"] {
   --orb-asr-color: #4ade80;
   --orb-asr-glow: rgba(74, 222, 128, .45);
   --orb-asr-shadow: 0 0 8px #4ade80, 0 0 24px rgba(74,222,128,.4), 0 10px 26px rgba(0,0,0,.5), inset 0 0 14px rgba(74,222,128,.22);
+  --orb-settings-bg: linear-gradient(160deg, #2d1b4e 0%, #1a1033 70%);
+  --orb-settings-color: #fb923c;
+  --orb-settings-glow: rgba(251, 146, 60, .45);
+  --orb-settings-shadow: 0 0 8px #fb923c, 0 0 24px rgba(251,146,60,.4), 0 10px 26px rgba(0,0,0,.5), inset 0 0 14px rgba(251,146,60,.22);
 }
 
 /* ================= glass（液态玻璃 · G1）================= */
-body[data-theme="glass"] {
+[data-theme="glass"] {
   --bg-card: rgba(16, 18, 26, 0.88);
   --bg-glass: rgba(255, 255, 255, 0.045);
   --bg-glass-strong: rgba(255, 255, 255, 0.09);
@@ -285,10 +309,14 @@ body[data-theme="glass"] {
   --orb-asr-color: #fff;
   --orb-asr-glow: rgba(52, 211, 153, .48);
   --orb-asr-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 3px 8px rgba(0,0,0,.28), 0 0 22px var(--orb-asr-glow);
+  --orb-settings-bg: radial-gradient(circle at 30% 24%, rgba(255,255,255,.32), rgba(255,255,255,0) 46%), linear-gradient(135deg, #2fd4cf 0%, #0fb6c9 55%, #0e9bb8 100%);
+  --orb-settings-color: #fff;
+  --orb-settings-glow: rgba(56, 189, 208, .45);
+  --orb-settings-shadow: 0 1px 1px rgba(255,255,255,.25) inset, 0 -6px 14px rgba(0,0,0,.22) inset, 0 10px 26px rgba(0,0,0,.38), 0 3px 8px rgba(0,0,0,.28), 0 0 22px rgba(56,189,208,.45);
 }
 
 /* ================= macaron（马卡龙奶油 · G4）================= */
-body[data-theme="macaron"] {
+[data-theme="macaron"] {
   --bg-card: rgba(255, 249, 245, 0.96);
   --bg-glass: rgba(255, 255, 255, 0.55);
   --bg-glass-strong: rgba(255, 255, 255, 0.72);
@@ -325,6 +353,231 @@ body[data-theme="macaron"] {
   --orb-asr-color: #3f6b58;
   --orb-asr-glow: rgba(165, 232, 205, .6);
   --orb-asr-shadow: 0 1px 1px rgba(255,255,255,.8) inset, 0 -5px 12px rgba(110,190,150,.18) inset, 0 10px 22px rgba(140, 190, 165, .38);
+  --orb-settings-bg: linear-gradient(145deg, #ccfbf1 0%, #5eead4 100%);
+  --orb-settings-color: #3a6b5f;
+  --orb-settings-glow: rgba(94, 234, 212, .55);
+  --orb-settings-shadow: 0 1px 1px rgba(255,255,255,.8) inset, 0 -5px 12px rgba(110,190,150,.18) inset, 0 10px 22px rgba(140, 190, 165, .38);
+}
+
+
+/* ================= metal（金属质感 · G5）================= */
+[data-theme="metal"] {
+  --bg-card: rgba(20, 24, 32, 0.92);
+  --bg-glass: rgba(148, 163, 184, 0.06);
+  --bg-glass-strong: rgba(148, 163, 184, 0.12);
+  --titlebar-bg: rgba(148, 163, 184, 0.04);
+  --divider: rgba(148, 163, 184, 0.16);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --accent: #64748b;
+  --accent-2: #3b82f6;
+  --accent-grad: linear-gradient(135deg, #94a3b8 0%, #3b82f6 100%);
+  --input-bg: rgba(148, 163, 184, 0.07);
+  --input-border: rgba(148, 163, 184, 0.22);
+  --focus-ring: rgba(100, 116, 139, 0.35);
+  --chip-bg: rgba(148, 163, 184, 0.09);
+  --shadow-card: 0 20px 46px rgba(0, 0, 0, 0.5);
+  --glass-border: rgba(148, 163, 184, 0.24);
+
+  /* 悬浮球 · 金属质感五态（银灰渐变 + 宝石色区分状态） */
+  --orb-glass-bg: linear-gradient(160deg, rgba(255,255,255,.9) 0%, rgba(255,255,255,.15) 30%, rgba(255,255,255,0) 52%);
+  --orb-border: 1px solid rgba(255,255,255,.28);
+  --orb-idle-bg: linear-gradient(150deg, #f1f5f9 0%, #cbd5e1 35%, #94a3b8 65%, #64748b 100%);
+  --orb-idle-color: #fff;
+  --orb-idle-glow: rgba(148, 163, 184, .35);
+  --orb-idle-shadow: 0 2px 3px rgba(255,255,255,.8) inset, 0 -4px 8px rgba(30,41,59,.45) inset, 0 10px 22px rgba(0,0,0,.4), 0 0 18px rgba(148,163,184,.35);
+  --orb-chat-bg: linear-gradient(150deg, #dbeafe 0%, #93c5fd 35%, #3b82f6 65%, #1d4ed8 100%);
+  --orb-chat-color: #fff;
+  --orb-chat-glow: rgba(59, 130, 246, .5);
+  --orb-chat-shadow: 0 2px 3px rgba(255,255,255,.7) inset, 0 -4px 8px rgba(15,23,42,.45) inset, 0 10px 22px rgba(0,0,0,.4), 0 0 18px rgba(59,130,246,.5);
+  --orb-tts-bg: linear-gradient(150deg, #fce7f3 0%, #f9a8d4 35%, #ec4899 65%, #be185d 100%);
+  --orb-tts-color: #fff;
+  --orb-tts-glow: rgba(236, 72, 153, .5);
+  --orb-tts-shadow: 0 2px 3px rgba(255,255,255,.7) inset, 0 -4px 8px rgba(15,23,42,.45) inset, 0 10px 22px rgba(0,0,0,.4), 0 0 18px rgba(236,72,153,.5);
+  --orb-asr-bg: linear-gradient(150deg, #dcfce7 0%, #86efac 35%, #10b981 65%, #047857 100%);
+  --orb-asr-color: #fff;
+  --orb-asr-glow: rgba(16, 185, 129, .5);
+  --orb-asr-shadow: 0 2px 3px rgba(255,255,255,.7) inset, 0 -4px 8px rgba(15,23,42,.45) inset, 0 10px 22px rgba(0,0,0,.4), 0 0 18px rgba(16,185,129,.5);
+  --orb-settings-bg: linear-gradient(150deg, #ccfbf1 0%, #5eead4 35%, #14b8a6 65%, #0f766e 100%);
+  --orb-settings-color: #fff;
+  --orb-settings-glow: rgba(20, 184, 166, .5);
+  --orb-settings-shadow: 0 2px 3px rgba(255,255,255,.7) inset, 0 -4px 8px rgba(15,23,42,.45) inset, 0 10px 22px rgba(0,0,0,.4), 0 0 18px rgba(20,184,166,.5);
+}
+
+/* ================= candy（活力糖果 · G6）================= */
+[data-theme="candy"] {
+  --bg-card: rgba(26, 16, 40, 0.94);
+  --bg-glass: rgba(236, 72, 153, 0.07);
+  --bg-glass-strong: rgba(236, 72, 153, 0.13);
+  --titlebar-bg: rgba(236, 72, 153, 0.05);
+  --divider: rgba(236, 72, 153, 0.2);
+  --text-primary: #fdf4ff;
+  --text-secondary: #c9a6d4;
+  --accent: #ec4899;
+  --accent-2: #a855f7;
+  --accent-grad: linear-gradient(135deg, #a855f7 0%, #ec4899 60%, #fb7185 100%);
+  --input-bg: rgba(236, 72, 153, 0.07);
+  --input-border: rgba(236, 72, 153, 0.28);
+  --focus-ring: rgba(236, 72, 153, 0.32);
+  --chip-bg: rgba(236, 72, 153, 0.09);
+  --shadow-card: 0 18px 44px rgba(0, 0, 0, 0.55);
+  --glass-border: rgba(236, 72, 153, 0.3);
+
+  /* 悬浮球 · 活力糖果五态（高饱和撞色 + 白描边） */
+  --orb-glass-bg: radial-gradient(circle at 32% 22%, rgba(255,255,255,.85), rgba(255,255,255,.2) 40%, rgba(255,255,255,0) 58%);
+  --orb-border: 2px solid rgba(255,255,255,.55);
+  --orb-idle-bg: linear-gradient(135deg, #a855f7 0%, #ec4899 60%, #fb7185 100%);
+  --orb-idle-color: #fff;
+  --orb-idle-glow: rgba(168, 85, 247, .4);
+  --orb-idle-shadow: 0 10px 24px rgba(168,85,247,.4), 0 3px 8px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.6);
+  --orb-chat-bg: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+  --orb-chat-color: #fff;
+  --orb-chat-glow: rgba(59, 130, 246, .4);
+  --orb-chat-shadow: 0 10px 24px rgba(59,130,246,.4), 0 3px 8px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.6);
+  --orb-tts-bg: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  --orb-tts-color: #fff;
+  --orb-tts-glow: rgba(236, 72, 153, .4);
+  --orb-tts-shadow: 0 10px 24px rgba(236,72,153,.4), 0 3px 8px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.6);
+  --orb-asr-bg: linear-gradient(135deg, #10b981 0%, #84cc16 100%);
+  --orb-asr-color: #fff;
+  --orb-asr-glow: rgba(16, 185, 129, .4);
+  --orb-asr-shadow: 0 10px 24px rgba(16,185,129,.4), 0 3px 8px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.6);
+  --orb-settings-bg: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  --orb-settings-color: #fff;
+  --orb-settings-glow: rgba(245, 158, 11, .4);
+  --orb-settings-shadow: 0 10px 24px rgba(245,158,11,.4), 0 3px 8px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.6);
+}
+
+/* ================= morandi（莫兰迪雅致 · G7）================= */
+[data-theme="morandi"] {
+  --bg-card: rgba(242, 238, 244, 0.94);
+  --bg-glass: rgba(138, 127, 148, 0.05);
+  --bg-glass-strong: rgba(138, 127, 148, 0.1);
+  --titlebar-bg: rgba(138, 127, 148, 0.04);
+  --divider: rgba(138, 127, 148, 0.14);
+  --text-primary: #4a4450;
+  --text-secondary: #8a7f94;
+  --accent: #8a7f94;
+  --accent-2: #72918d;
+  --accent-grad: linear-gradient(135deg, #8a7f94 0%, #72918d 100%);
+  --input-bg: rgba(255, 255, 255, 0.6);
+  --input-border: rgba(138, 127, 148, 0.22);
+  --focus-ring: rgba(138, 127, 148, 0.25);
+  --chip-bg: rgba(138, 127, 148, 0.08);
+  --shadow-card: 0 16px 38px rgba(90, 80, 100, 0.18);
+  --glass-border: rgba(255, 255, 255, 0.75);
+
+  /* 悬浮球 · 莫兰迪雅致五态（低饱和灰调 + 细描边） */
+  --orb-glass-bg: radial-gradient(circle at 30% 20%, rgba(255,255,255,.9), rgba(255,255,255,.1) 45%, rgba(255,255,255,0) 60%);
+  --orb-border: 1.5px solid #c9bfd1;
+  --orb-idle-bg: #efe9f2;
+  --orb-idle-color: #8a7f94;
+  --orb-idle-glow: rgba(90, 80, 100, .18);
+  --orb-idle-shadow: 0 8px 18px rgba(90, 80, 100, .18);
+  --orb-chat-bg: #e7edf3;
+  --orb-chat-color: #7d93a8;
+  --orb-chat-glow: rgba(125, 147, 168, .25);
+  --orb-chat-shadow: 0 8px 18px rgba(90, 80, 100, .18);
+  --orb-tts-bg: #f2e7e9;
+  --orb-tts-color: #a87f8b;
+  --orb-tts-glow: rgba(168, 127, 139, .28);
+  --orb-tts-shadow: 0 8px 18px rgba(90, 80, 100, .18);
+  --orb-asr-bg: #eaf0e6;
+  --orb-asr-color: #7f9875;
+  --orb-asr-glow: rgba(127, 152, 117, .3);
+  --orb-asr-shadow: 0 8px 18px rgba(90, 80, 100, .18);
+  --orb-settings-bg: #e4efed;
+  --orb-settings-color: #72918d;
+  --orb-settings-glow: rgba(114, 145, 141, .25);
+  --orb-settings-shadow: 0 8px 18px rgba(90, 80, 100, .18);
+}
+
+/* ================= green（自然绿意 · G9）================= */
+[data-theme="green"] {
+  --bg-card: rgba(15, 28, 18, 0.92);
+  --bg-glass: rgba(132, 204, 22, 0.06);
+  --bg-glass-strong: rgba(132, 204, 22, 0.12);
+  --titlebar-bg: rgba(132, 204, 22, 0.04);
+  --divider: rgba(132, 204, 22, 0.16);
+  --text-primary: #f0fdf4;
+  --text-secondary: #8fb894;
+  --accent: #84cc16;
+  --accent-2: #10b981;
+  --accent-grad: linear-gradient(135deg, #84cc16 0%, #10b981 100%);
+  --input-bg: rgba(132, 204, 22, 0.06);
+  --input-border: rgba(132, 204, 22, 0.24);
+  --focus-ring: rgba(132, 204, 22, 0.3);
+  --chip-bg: rgba(132, 204, 22, 0.08);
+  --shadow-card: 0 18px 44px rgba(0, 0, 0, 0.5);
+  --glass-border: rgba(132, 204, 22, 0.26);
+
+  /* 悬浮球 · 自然绿意五态（苔藓森林绿渐变） */
+  --orb-glass-bg: radial-gradient(circle at 32% 22%, rgba(255,255,255,.28), rgba(255,255,255,0) 50%);
+  --orb-border: 1px solid rgba(255,255,255,.18);
+  --orb-idle-bg: linear-gradient(150deg, #84cc16 0%, #4d7c0f 60%, #365314 100%);
+  --orb-idle-color: #f0fdf4;
+  --orb-idle-glow: rgba(77, 124, 15, .4);
+  --orb-idle-shadow: 0 10px 22px rgba(77,124,15,.4), 0 3px 8px rgba(0,0,0,.2), inset 0 2px 3px rgba(255,255,255,.25);
+  --orb-chat-bg: linear-gradient(150deg, #10b981 0%, #065f46 60%, #064e3b 100%);
+  --orb-chat-color: #f0fdf4;
+  --orb-chat-glow: rgba(16, 185, 129, .4);
+  --orb-chat-shadow: 0 10px 22px rgba(16,185,129,.4), 0 3px 8px rgba(0,0,0,.2), inset 0 2px 3px rgba(255,255,255,.25);
+  --orb-tts-bg: linear-gradient(150deg, #f59e0b 0%, #b45309 60%, #78350f 100%);
+  --orb-tts-color: #f0fdf4;
+  --orb-tts-glow: rgba(180, 83, 9, .4);
+  --orb-tts-shadow: 0 10px 22px rgba(180,83,9,.4), 0 3px 8px rgba(0,0,0,.2), inset 0 2px 3px rgba(255,255,255,.25);
+  --orb-asr-bg: linear-gradient(150deg, #a3e635 0%, #65a30d 60%, #3f6212 100%);
+  --orb-asr-color: #f0fdf4;
+  --orb-asr-glow: rgba(101, 163, 13, .4);
+  --orb-asr-shadow: 0 10px 22px rgba(101,163,13,.4), 0 3px 8px rgba(0,0,0,.2), inset 0 2px 3px rgba(255,255,255,.25);
+  --orb-settings-bg: linear-gradient(150deg, #2dd4bf 0%, #0f766e 60%, #134e4a 100%);
+  --orb-settings-color: #f0fdf4;
+  --orb-settings-glow: rgba(45, 212, 191, .4);
+  --orb-settings-shadow: 0 10px 22px rgba(45,212,191,.4), 0 3px 8px rgba(0,0,0,.2), inset 0 2px 3px rgba(255,255,255,.25);
+}
+
+/* ================= mono（黑白极简 · G10）================= */
+[data-theme="mono"] {
+  --bg-card: rgba(17, 17, 17, 0.95);
+  --bg-glass: rgba(255, 255, 255, 0.05);
+  --bg-glass-strong: rgba(255, 255, 255, 0.1);
+  --titlebar-bg: rgba(255, 255, 255, 0.03);
+  --divider: rgba(255, 255, 255, 0.16);
+  --text-primary: #ffffff;
+  --text-secondary: #9a9a9a;
+  --accent: #ffffff;
+  --accent-2: #9a9a9a;
+  --accent-grad: linear-gradient(135deg, #ffffff 0%, #9a9a9a 100%);
+  --input-bg: rgba(255, 255, 255, 0.06);
+  --input-border: rgba(255, 255, 255, 0.24);
+  --focus-ring: rgba(255, 255, 255, 0.25);
+  --chip-bg: rgba(255, 255, 255, 0.08);
+  --shadow-card: 0 18px 44px rgba(0, 0, 0, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.24);
+
+  /* 悬浮球 · 黑白极简五态（黑白交替 + 粗线条） */
+  --orb-glass-bg: none;
+  --orb-border: 2px solid #111111;
+  --orb-idle-bg: #ffffff;
+  --orb-idle-color: #111111;
+  --orb-idle-glow: rgba(0, 0, 0, .2);
+  --orb-idle-shadow: 0 6px 16px rgba(0,0,0,.22);
+  --orb-chat-bg: #111111;
+  --orb-chat-color: #ffffff;
+  --orb-chat-glow: rgba(0, 0, 0, .3);
+  --orb-chat-shadow: 0 6px 16px rgba(0,0,0,.3);
+  --orb-tts-bg: #111111;
+  --orb-tts-color: #ffffff;
+  --orb-tts-glow: rgba(0, 0, 0, .3);
+  --orb-tts-shadow: 0 6px 16px rgba(0,0,0,.3);
+  --orb-asr-bg: #ffffff;
+  --orb-asr-color: #111111;
+  --orb-asr-glow: rgba(0, 0, 0, .2);
+  --orb-asr-shadow: 0 6px 16px rgba(0,0,0,.22);
+  --orb-settings-bg: #ffffff;
+  --orb-settings-color: #111111;
+  --orb-settings-glow: rgba(0, 0, 0, .2);
+  --orb-settings-shadow: 0 6px 16px rgba(0,0,0,.22);
 }
 
 /* 滚动条 */
