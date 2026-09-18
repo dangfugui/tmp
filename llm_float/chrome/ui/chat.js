@@ -20,19 +20,10 @@ function applyChatTheme(theme) {
   document.body.dataset.theme = theme || "flat";
 }
 
-// ===== Chrome 扩展桥：content script 中转的配置 / 状态推送 =====
-window.addEventListener("message", (e) => {
-  const data = e.data || {};
-  if (data.kind !== "assistant" || !data.name) return;
-  const fn = window.assistant[data.name];
-  if (typeof fn === "function") fn(data.payload || {});
-});
-
 (function initFromStorage() {
-  // 兜底：直接读 chrome.storage 填充（iframe 为扩展页，可访问）
+  // 兜底：直接读 chrome.storage 填充（iframe 为扩展页，可访问；主题由 common.js 兜底）
   try {
-    chrome.storage.local.get(["theme", "chat_profiles", "active_profile_name"], (d) => {
-      if (d.theme) applyChatTheme(d.theme);
+    chrome.storage.local.get(["chat_profiles", "active_profile_name"], (d) => {
       if (d.chat_profiles) window.assistant.setChatProfiles({ profiles: d.chat_profiles });
       if (d.active_profile_name) window.assistant.setActiveChatProfile({ profile: { chatName: d.active_profile_name } });
     });

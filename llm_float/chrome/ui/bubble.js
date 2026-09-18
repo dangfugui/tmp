@@ -79,14 +79,6 @@ function onAsrFinal(payload) {
   renderAsr('');
 }
 
-/* ===== Chrome 扩展桥：content script 中转的配置 / 状态推送 ===== */
-window.addEventListener("message", (e) => {
-  const data = e.data || {};
-  if (data.kind !== "assistant" || !data.name) return;
-  const fn = window.assistant[data.name];
-  if (typeof fn === "function") fn(data.payload || {});
-});
-
 /* ===== TTS demo：逐句朗读 + 字幕推进（浏览器 speechSynthesis，无需 Python） ===== */
 let ttsQueue = [];
 function runTtsDemo(text) {
@@ -118,15 +110,6 @@ function speakNext() {
   u.onerror = () => speakNext();
   try { speechSynthesis.speak(u); } catch (e) { speakNext(); }
 }
-
-/* ===== 兜底：iframe 加载后直接读 storage 主题 ===== */
-(function initFromStorage() {
-  try {
-    chrome.storage.local.get(["theme"], (d) => {
-      if (d.theme) document.body.dataset.theme = d.theme;
-    });
-  } catch (e) { /* 非扩展环境忽略 */ }
-})();
 
 function notifyDemoDone() {
   try { window.parent.postMessage({ kind: "bubble", action: "demo_done" }, "*"); } catch (e) { /* 忽略 */ }

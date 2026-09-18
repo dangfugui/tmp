@@ -1,4 +1,4 @@
-// LLM Float content script — 模块：asr.js（语音识别：录音 + 接口识别 / 浏览器实时识别）
+// LLM Float content script — 功能单元：asr.js（语音识别：录音 + 接口识别 / 浏览器实时识别）
 // 非流式（http）：MediaRecorder 录音 → 停止 → POST {host}/v1/audio/transcriptions（OpenAI 兼容）→ 结果 → 聊天窗
 // 流式（stream）：浏览器 SpeechRecognition 实时识别（partial 持续显示）→ 结束 → 结果 → 聊天窗
 // 未配置 HOST / 浏览器不支持时给出清晰提示；关闭（off）时右键无动作
@@ -30,7 +30,7 @@
     // 注意：不要在这里调 stopAsr()——它会把 asrMuted 置 true，污染 getUserMedia 等待期的状态判断。
     // 所有调用方（startMediaRecord / startAsrWebRecognition）入口均已先 stopAsr()。
     pushOrbState("asr");
-    showBubble();
+    openPanel("bubble");
     BUBBLE.classList.add("asr-active"); // 开启气泡点击（停止按钮）
     pushBubble("setMode", { mode: "asr" });
     pushBubble("setTheme", { theme: currentTheme });
@@ -54,7 +54,7 @@
     reportToBridge("onAsrState", { state: "idle" });
     showAsrText(text);
     setUi({ asr: { listening: false } });
-    setTimeout(() => hideBubble(), 2400);
+    setTimeout(() => closePanel("bubble"), 2400);
     pushOrbState("idle");
   }
   function releaseMic() {
@@ -71,7 +71,7 @@
     stopAsr();
     pushOrbState("idle");
     setTimeout(() => {
-      showChat();
+      callCommand("showChat", {});
       pushChat("sendText", { text: t });
     }, 120);
   }
@@ -248,7 +248,7 @@
     }
     // 无活动识别（含 getUserMedia 权限等待中）→ 直接收尾；asrMuted 拦截后续 resolve 的录音启动
     stopAsr();
-    hideBubble();
+    closePanel("bubble");
     pushOrbState("idle");
   }
 
@@ -273,7 +273,7 @@
   function openAsrMock() {
     stopAsr();
     pushOrbState("asr");
-    showBubble();
+    openPanel("bubble");
     pushBubble("setMode", { mode: "asr" });
     pushBubble("onAsrState", { state: "listening" });
     setUi({ bubble: { mode: "asr" }, asr: { listening: true } });
@@ -303,3 +303,40 @@
     };
     asrMockTimer = setInterval(step, 180);
   }
+
+/* ========== 功能单元注册：命令 + 面板消息 ========== */
+registerCommand("startAsr", () => { startAsrRecording(); return { ok: true }; });
+registerCommand("setAsrText", (p) => {
+  const t = String((p && p.text) || "");
+  if (!t) return { ok: true };
+  if (uiState.asr.listening !== true) openAsrMock();
+  asrMockLast = t;
+  pushBubble("onAsrPartial", { text: t });
+  reportToBridge("onAsrPartial", { text: t });
+  return { ok: true };
+});
+registerCommand("endAsr", (p) => {
+  const t = (typeof p.text === "string" && p.text) ? p.text : asrMockLast;
+  if (t) { pushBubble("onAsrFinal", { text: t }); reportToBridge("onAsrFinal", { text: t }); }
+  pushBubble("onAsrState", { state: "idle" });
+  reportToBridge("onAsrState", { state: "idle" });
+  setUi({ asr: { listening: false } });
+  asrMockLast = "";
+  setTimeout(() => closePanel("bubble"), 1200);
+  pushOrbState("idle");
+  return { ok: true };
+});
+registerCommand("stopAsr", () => { stopAsr(); closePanel("bubble"); pushOrbState("idle"); return { ok: true }; });
+registerCommand("startAsrDemo", () => { startAsrMock(); return { ok: true }; });
+
+registerPanelMessage("bubble", (kind, data) => {
+  if (data.action === "asr_stop") {
+    // ASR 气泡停止按钮：停止录音/识别并收尾（结果发到聊天窗）
+    console.log("[llm-float][main] asr_stop received");
+    stopAsrAndRecognize();
+  } else if (data.action === "demo_done") {
+    // 气泡结束：聊天窗开着时不改悬浮球状态（保持 chat 态）
+    if (CHAT.classList.contains("show")) return;
+    pushOrbState("idle");
+  }
+});

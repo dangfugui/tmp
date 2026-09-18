@@ -7,25 +7,10 @@ let downY = 0;
 
 const DRAG_THRESHOLD = 4;
 
-// Chrome 扩展桥：background/options 推送（content script 中转 postMessage）
-window.addEventListener("message", (e) => {
-  const data = e.data || {};
-  if (data.kind !== "assistant" || !data.name) return;
-  const fn = window.assistant[data.name];
-  if (typeof fn === "function") fn(data.payload || {});
-});
-
-window.assistant = window.assistant || {};
-window.assistant.setTheme = function (payload) {
-  const theme = payload && payload.theme ? payload.theme : "dark";
-  document.body.dataset.theme = theme;
-};
-
-// 兜底：iframe 加载后直接读 storage（postMessage 可能早于本脚本注册）
+// 兜底：iframe 加载后直接读 storage（postMessage 可能早于本脚本注册；主题由 common.js 兜底）
 (function initFromStorage() {
   try {
-    chrome.storage.local.get(["theme", "orb_size"], (d) => {
-      if (d.theme) window.assistant.setTheme({ theme: d.theme });
+    chrome.storage.local.get(["orb_size"], (d) => {
       if (d.orb_size) window.assistant.setOrbSize({ size: d.orb_size });
     });
   } catch (e) { /* 非扩展环境忽略 */ }

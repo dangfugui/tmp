@@ -1,4 +1,4 @@
-// LLM Float content script — 模块：tts.js（TTS 朗读 + ttsTarget 自动朗读）
+// LLM Float content script — 功能单元：tts.js（TTS 朗读 + ttsTarget 自动朗读）
 // 播报优先走设置页配置的 WS 流式 TTS 接口（qwen3-tts /v1/audio/speech/stream），
 // 未配置 HOST / 接口失败时回退浏览器 speechSynthesis。
   function stopContentTts() {
@@ -223,7 +223,7 @@
       if (i >= total) {
         setUi({ tts: { speaking: false, current: "" } });
         reportToBridge("onTtsIdle", {});
-        setTimeout(() => hideBubble(), 1200);
+        setTimeout(() => closePanel("bubble"), 1200);
         return;
       }
       const s = sentences[i];
@@ -242,7 +242,7 @@
   function speakText(text) {
     console.log("[llm-float][tts] speakText 进入: '" + text + "'");
     try {
-      stopAsr(); // 互斥：朗读时停止正在进行的识别
+      callCommand("stopAsr", {}); // 互斥：朗读时停止正在进行的识别（经命令表，asr 未注册无副作用）
       const sentences = String(text).split(/[。！？!?；;]/).map(s => s.trim()).filter(Boolean);
       if (!sentences.length) return;
       getTtsConfig().then((cfg) => {
@@ -251,7 +251,7 @@
           console.warn("[llm-float][tts] speakText 已跳过：TTS 开关为 off（设置 → 字幕（TTS）标题栏三态）");
           return; // 播报已关闭（标题栏三态：关）
         }
-        showBubble();
+        openPanel("bubble");
         pushBubble("setMode", { mode: "subtitle" }); // 激活字幕区（否则气泡只显示空窗口）
         pushBubble("setTheme", { theme: currentTheme });
         ttsCanceled = false;
@@ -266,7 +266,7 @@
           if (ok) {
             setUi({ tts: { speaking: false, current: "" } });
             reportToBridge("onTtsIdle", {});
-            setTimeout(() => hideBubble(), 1200);
+            setTimeout(() => closePanel("bubble"), 1200);
           } else {
             legacySpeakSentences(sentences); // 未配置 HOST / 接口失败 → 回退
           }
@@ -274,3 +274,8 @@
       });
     } catch (e) { console.error("[llm-float][tts] speakText 出错:", e); }
   }
+
+/* ========== 功能单元注册：命令 ========== */
+registerCommand("speakText", (p) => { speakText((p && p.text) || ""); return { ok: true }; });
+registerCommand("stopSpeak", () => { stopContentTts(); closePanel("bubble"); return { ok: true }; });
+registerCommand("startTtsTarget", () => { startTtsTarget(); return { ok: true }; });
