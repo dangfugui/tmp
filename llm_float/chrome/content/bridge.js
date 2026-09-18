@@ -28,6 +28,7 @@
     switch (cmd) {
       case "showChat":   showChat(); if (p.send) pushChat("sendText", { text: p.send }); break;
       case "hideChat":   hideChat(); pushOrbState("idle"); break;
+case "hideAll":    hideChat(); hideBubble(); pushOrbState("idle"); break;
       case "sendText":   pushChat("sendText", { text: p.text }); break;
       case "stopChat":   pushChat("stopChat", {}); break;
       case "speakText":  speakText(p.text || ""); break;

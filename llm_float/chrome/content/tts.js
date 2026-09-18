@@ -247,7 +247,10 @@
       if (!sentences.length) return;
       getTtsConfig().then((cfg) => {
         const mode = cfg.tts_mode || "stream";
-        if (mode === "off") return; // 播报已关闭（标题栏三态：关）
+        if (mode === "off") {
+          console.warn("[llm-float][tts] speakText 已跳过：TTS 开关为 off（设置 → 字幕（TTS）标题栏三态）");
+          return; // 播报已关闭（标题栏三态：关）
+        }
         showBubble();
         pushBubble("setMode", { mode: "subtitle" }); // 激活字幕区（否则气泡只显示空窗口）
         pushBubble("setTheme", { theme: currentTheme });

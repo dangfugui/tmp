@@ -38,17 +38,9 @@ async def main():
         print("    [状态] orb=%s chat=%s bubble=%s" % (d.get("orb"), d.get("chat"), d.get("bubble")))
 
     await sdk.start()
-    print("=== 桥已连接，开始演示 ===")
+    print("=== 桥已连接，开始演示（只读：不修改任何设置）===")
 
-    # 1. 全局：主题切换（所有页面悬浮球联动）
-    print("[1] 切回 极简扁平 …")
-    await sdk.setTheme("flat")
-    await asyncio.sleep(SLEEP)
-    print("[2] 切换主题 霓虹赛博 → 观察悬浮球变色（全局）…")
-    await sdk.setTheme("neon")
-    await asyncio.sleep(SLEEP)
-
-    # 2. 遍历每个页面演示
+    # 遍历每个页面演示：每步 sleep 后调用对应 stop 收尾
     tabs = await sdk.getTabs()
     print("\n共 %d 个可注入页面" % len(tabs))
     for i, tab in enumerate(tabs, 1):
@@ -60,10 +52,16 @@ async def main():
             print("-> showChat(send=...) 打开聊天窗并发送一条消息")
             await sdk.showChat(send="你好，请用一句话介绍自己", tabId=tid)
             await asyncio.sleep(SLEEP + 1)  # 观察聊天窗与流式回复（无后端会显示错误提示，属正常）
+            print("-> stopChat 停止 AI 回复")
+            await sdk.stopChat(tabId=tid)
+            await asyncio.sleep(1)
 
             print("-> speakText(...) 语音播报字幕")
             await sdk.speakText("这是语音播报演示。现在播放第一句。然后是第二句。", tabId=tid)
             await asyncio.sleep(SLEEP + 1)
+            print("-> stopSpeak 停止播报")
+            await sdk.stopSpeak(tabId=tid)
+            await asyncio.sleep(1)
 
             print("-> startAsr + setAsrText×3 + endAsr 模拟流式识别")
             await sdk.startAsr(tabId=tid)
@@ -73,17 +71,20 @@ async def main():
                 await asyncio.sleep(1.2)
             await sdk.endAsr(text="大家好，这是流式识别效果，实时显示中。识别完成。", tabId=tid)
             await asyncio.sleep(SLEEP)
+            print("-> stopAsr 停止识别（防御性，识别已结束）")
+            await sdk.stopAsr(tabId=tid)
+            await asyncio.sleep(1)
 
-            print("-> hideChat 收起聊天窗，进入下一个页面")
-            await sdk.hideChat(tabId=tid)
+            print("-> hideAll 一键收起全部弹窗（只留悬浮球）")
+            await sdk.hideAll(tabId=tid)
             await asyncio.sleep(2)
         except Exception as e:
             # 该页面不可操作（未注入 / 页面受限等）：打印原因并继续下一个页面
             print("    跳过该页面：%s" % e)
             continue
 
-    # 3. 读取全局配置（storage 全部参数）
-    print("\n[最后] getConfig 读取全局配置")
+    # 读取全局配置（只读，不修改任何设置）
+    print("\n[最后] getConfig 读取全局配置（只读）")
     cfg = await sdk.getConfig()
     for k in ("theme", "orb_size", "orb_opacity", "orb_enabled", "active_profile_name"):
         print("    %s = %s" % (k, cfg.get(k)))

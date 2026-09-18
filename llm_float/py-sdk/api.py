@@ -59,9 +59,11 @@ class FloatSDK:
                             except Exception as e:
                                 log.warning("事件 %s 处理异常: %s", ev, e)
             finally:
-                self._ext = None
-                self._connected.clear()
-                log.warning("扩展断开连接")
+                # 仅当仍是本连接时才清理：避免旧连接断开误清新连接的 _ext / _connected 状态（重连竞态）
+                if self._ext is ws:
+                    self._ext = None
+                    self._connected.clear()
+                    log.warning("扩展断开连接")
 
         self._server = await websockets.serve(handler, self.host, self.port)
         log.info("SDK 桥已监听 ws://%s:%s/bridge（等待扩展连接…）", self.host, self.port)
@@ -121,6 +123,10 @@ class FloatSDK:
 
     async def hideChat(self, tabId=None):
         return await self._call("hideChat", self._params(tabId))
+
+    async def hideAll(self, tabId=None):
+        """一键收起全部弹窗（聊天窗/字幕气泡），只留悬浮球。"""
+        return await self._call("hideAll", self._params(tabId))
 
     async def sendText(self, text, tabId=None):
         return await self._call("sendText", self._params(tabId, text=text))

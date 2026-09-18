@@ -242,7 +242,7 @@ function bgTtsWs(msg, cb) {
    ============================================================ */
 const PY_BRIDGE_URL = "ws://127.0.0.1:7860/bridge";
 const BRIDGE_RETRY_BASE_MS = 3000;   // 重连退避基数
-const BRIDGE_RETRY_MAX_MS = 60000;   // 重连退避上限（纯插件场景不刷屏）
+const BRIDGE_RETRY_MAX_MS = 5000;   // 重连退避上限：保证 SDK 重启后数秒内自动连上（失败日志仅提示一次，不刷屏）
 let pyWs = null;
 let bridgeReconnectTimer = null;
 let bridgeFailCount = 0;             // 连续失败次数（成功连接时归零）
@@ -384,9 +384,10 @@ async function bridgeRoute(m) {
 chrome.alarms.create("py-bridge-keepalive", { periodInMinutes: 0.4 });
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name !== "py-bridge-keepalive") return;
-  if (!pyWs || pyWs.readyState !== 1) {
+  // OPEN(1)/CONNECTING(0) 视为正在处理中不打扰；CLOSING(2)/CLOSED(3)/null 才重连
+  if (!pyWs || (pyWs.readyState !== 0 && pyWs.readyState !== 1)) {
     if (!bridgeReconnectTimer) bridgeConnect(); // 退避等待中不抢跑
-  } else bridgeSend({ event: "ping" });
+  } else if (pyWs.readyState === 1) bridgeSend({ event: "ping" });
 });
 
 bridgeConnect();
