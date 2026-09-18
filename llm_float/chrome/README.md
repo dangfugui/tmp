@@ -1,77 +1,63 @@
-# LLM Float Orb – Chrome 扩展
+# LLM Float 悬浮助手（Chrome 扩展版 v0.3）
 
-一个最小的 Chrome 扩展，在浏览器页面中注入一个可拖动的浮动 AI 助手 orb。  
-orb 是一个简单的 HTML 按钮，用 CSS 样式化；点击它可以扩展为打开 popup、侧边栏，或与后台脚本通信。
+从 PySide6 桌面悬浮窗迁移的浏览器插件版。**核心 UI 不依赖 Python**：QwenPaw 聊天请求/SSE 解析、TTS 朗读、ASR 识别全部在扩展内完成；Python 仅作可选增强服务（后续接入）。
 
-## 📦 文件
+## 目录结构
 
 ```
 chrome/
-├─ manifest.json      # 扩展元数据 (MV3)
-├─ orb.html           # orb 的 popup/UI（目前未使用，保留以备将来）
-├─ orb.css            # 样式（大小、颜色、悬停/激活状态、拖动状态）
-├─ orb.js             # 交互逻辑的占位符（目前未使用）
-├─ content.js         # 将 orb 注入到所有页面并提供拖动功能
-├─ options.html       # 设置页面
-├─ options.js         # 通过 chrome.storage 加载/保存设置
-├─ background.js      # (可选) 后台服务工作者
-└─ README.md          # 此文件
+├─ manifest.json            # MV3 清单（<all_urls> 内网自用）
+├─ background.js            # URL 匹配聊天配置 / 全局配置 / demo 广播 / 消息路由
+├─ content/
+│  ├─ content.js            # 注入 悬浮球 + 聊天 + 字幕气泡 三个 iframe；拖动/显隐/ttsTarget 自动朗读
+│  └─ content.css           # 容器样式
+├─ ui/                      # 复用 PySide6 项目的 web 资产（桥接已改造）
+│  ├─ button.html/css/js    # 悬浮球（五态）：单击开聊天 / 右键开设置 / 左键拖动
+│  ├─ chat.html/css/js      # 聊天窗：QwenPaw SSE 直连（AbortController 停止）+ Markdown
+│  ├─ bubble.html/css/js    # 字幕气泡：TTS 字幕（speechSynthesis）/ ASR 识别（Web Speech API）
+│  └─ theme.css             # 8 主题（flat/neon/synthwave/glass/macaron/dark/blue/light）
+└─ options/                 # 设置页（完整版）：基础 / 聊天（网址匹配）/ 字幕 / 未启用
 ```
 
-*(manifest.json 中引用的图标文件 (`icon16.png`, `icon32.png`, `icon48.png`, `icon128.png`) 用于基本测试不是必需的。您可以生成任意 16×16、32×32、48×48、128×128 的 PNG 并放置在此文件夹中，或如果不需要它们，删除 `"default_icon"` 和 `"icons"` 条目。)*
+## 工作原理
 
-## 🚀 安装（加载未打包的扩展）
+- **悬浮球**：content script 注入 `ui/button.html` iframe（fixed 右下角）。左键拖动、单击开聊天、右键开设置。
+- **聊天**：`ui/chat.html` iframe 为扩展页，`fetch` 受 `host_permissions` 豁免 **无 CORS**，直接请求 QwenPaw `/api/console/chat`，SSE 解析与 Python 版一致（`object/content` 增量、`msg_types` 区分 reasoning、`delta` 校准、`response.completed` 兜底）。**停止 = AbortController 断开连接**。
+- **网址匹配**：background 监听 `tabs.onActivated/onUpdated`，按活动标签 URL 匹配 `chat_profiles`（**第一条默认兜底，从第二条起正则**），写入 `active_profile_name` 并通知聊天窗切换标题下拉框。
+- **字幕气泡**：设置页「TTS / ASR」demo 按钮 → 广播 `llm_demo` → 当前标签页显示气泡并执行：
+  - TTS：`speechSynthesis` 逐句朗读 + 字幕逐句推进（无需 Python）
+  - ASR：`webkitSpeechRecognition` 实时识别（interim 中间结果 / final 定稿）
+- **ttsTarget 自动朗读**：若当前聊天配置填了 TTS 定位（网页元素 id），content script 用 MutationObserver 监听该元素，出现新增文本自动朗读 + 气泡字幕。
+- **配置存储**：`chrome.storage.local`，保存后广播 `llm_config_updated` 全标签页实时生效。
 
-1. **打开 Chrome 扩展页面**  
-   - 网址：`chrome://extensions`  
-   - 或点击拼图图标 → **管理扩展**。
+## 聊天配置字段
 
-2. **启用开发者模式**（右上角切换开关）。
+| 字段 | 说明 |
+|---|---|
+| `chatName` | 配置名称（标题下拉框显示） |
+| `urlRegex` | 网址匹配正则（`new RegExp().test(url)`） |
+| `baseUrl` | QwenPaw 服务根地址（如 `http://localhost:8088`） |
+| `agentId` | Agent ID |
+| `ttsTarget` | TTS 定位：网页该元素 id 出现新文本 → 自动朗读 + 字幕 |
+| `token` | QwenPaw Web 认证 Bearer token（本地可留空） |
 
-3. **点击“加载已解压的扩展”** 并选择文件夹：  
-   ```
-   C:\Users\admin\Downloads\tmp\llm_float\chrome
-   ```
+## 安装（内网 / 加载已解压）
 
-4. 扩展应该会出现在列表中，处于启用状态。
+1. `chrome://extensions` → 开发者模式 → 「加载已解压的扩展程序」→ 选本目录
+2. 打开任意网页 → 右下角出现悬浮球
 
-5. 打开任意网页，您应该会看到一个蓝紫渐变的圆形按钮（68 px）出现在页面的右下角（初始位置）。  
-   - 按住左键拖动可以移动 orb，释放后位置会保持直至页面刷新或关闭。  
-   - 右键点击 orb → **检查** 可查看其结构和样式。  
-   - 右键点击扩展图标 → **扩展选项** 打开设置页面。
+## 使用
 
-## ⚙️ 设置
+- **悬浮球**：左键拖动；单击 → 聊天窗；右键 → 设置页
+- **聊天窗**：标题下拉框手动切换配置（下次按网址自动重新匹配）；等待回复时按钮变「停止」；流式回复 Markdown 渲染
+- **设置页**：主题/大小/透明度/聊天配置表格（6 字段）；TTS / ASR demo 按钮；「未启用」分组默认折叠
+- **TTS 定位**：在配置表填网页元素 id（如 `chat-content`），该元素新增文本自动朗读并显示字幕
 
-选项页面 (`options.html`) 允许您切换：
+## 打包（内网分发）
 
-- **启用声音反馈**（占位符）
-- **Chrome 启动时自动启动**（占位符）
-- **orb 大小（px）** – 调整 orb 的宽度/高度（默认 68）。
+`chrome://extensions` → 「打包扩展程序」→ 生成 `.crx` + `.pem`，内网机器拖入安装。
 
-值通过 `chrome.storage.sync` 持久化。
+## 后续规划
 
-## 🛠️ 开发技巧
-
-- **更改后重新加载**：编辑任何文件后，点击 `chrome://extensions` 中扩展卡片上的 ♻️ “重新加载” 按钮。
-- **控制台**：  
-  - 查看注入脚本的输出：在扩展详情页 → “检查视图” → `content.js`。  
-  - 查看 orb 本身的样式和结构：右键点击 orb → **检查**。
-- **后台**：如果您在 `background.js` 中添加逻辑，请记住它是 MV3 的服务工作者。可通过扩展页面 → “服务工作者” 查看其控制台。
-
-## 📦 打包（可选）
-
-如需分发：
-
-1. 访问 `chrome://extensions` → **打包扩展**。
-2. 设置 **扩展根目录** 为 `chrome` 文件夹。
-3. 留空 **私钥文件**（Chrome 将生成一个）或提供您自己的用于更新。
-4. 点击 **打包扩展** – 它将创建一个 `.crx` 文件和一个 `.pem` 密钥。
-
-## 📝 注意事项
-
-- 该扩展使用 **Manifest V3**（后台为服务工作者）。  
-- 不需要外部库；所有代码均为原生 HTML/CSS/JS。  
-- orb 故意简单——随时用您自己的设计替换 `orb.html`/`orb.css`（例如，您之前生成的静态 SVG 选项）。  
-- 目前位置不会跨页面保存；如需持久化位置，可在 `content.js` 中使用 `chrome.storage` 读取/写入左/Top 值。
-
-享受您的可拖动浮动 AI 助手！
+- Python 可选桥（WS 127.0.0.1:8765）：高级 ASR（Whisper/讯飞）/ 外部业务接口，断线自动降级
+- 系统级热键（chrome.commands 需在 chrome://extensions 手动绑定）

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>bubble</title>
+  <link rel="stylesheet" href="theme.css" />
+  <link rel="stylesheet" href="bubble.css" />
+</head>
+<body data-theme="dark" data-mode="subtitle">
+  <div class="pill-card" id="card">
+    <!-- 玻璃高光层 -->
+    <span class="glass"></span>
+
+    <!-- 字幕模式（TTS） -->
+    <div class="mode" id="mode-sub">
+      <div class="sub-prev" id="sub-prev"></div>
+      <div class="sub-cur" id="sub-cur">等待播报…</div>
+    </div>
+
+    <!-- 识别模式（ASR） -->
+    <div class="mode" id="mode-asr">
+      <span class="asr-dot" id="asr-dot"></span>
+      <span class="asr-text" id="asr-text">聆听中…</span>
+      <span class="asr-wave"><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+  </div>
+  <script src="bubble.js"></script>
+</body>
+</html>

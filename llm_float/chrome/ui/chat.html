@@ -3,15 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <title>AI 助手</title>
+  <link rel="stylesheet" href="theme.css" />
   <link rel="stylesheet" href="chat.css" />
 </head>
 <body>
   <div class="card">
     <header class="titlebar" id="titlebar">
       <div class="brand">
-        <span class="avatar">AI</span>
+        <span class="avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/>
+          </svg>
+        </span>
         <div class="brand-text">
-          <span class="name">AI 助手</span>
+          <select id="chat-title" class="name-select" title="切换聊天配置">
+            <option value="">AI 助手</option>
+          </select>
           <span class="status"><i class="dot"></i>在线</span>
         </div>
       </div>
@@ -38,9 +45,12 @@
     <footer class="composer">
       <textarea id="input" rows="1" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
       <button class="send" id="send" title="发送">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+        <svg class="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
              stroke-linecap="round" stroke-linejoin="round">
           <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+        <svg class="stop-icon" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="6" width="12" height="12" rx="2"/>
         </svg>
       </button>
     </footer>

@@ -1,1 +1,0 @@
-﻿Task completed: content.js updated with verbose logging to debug right-click event; left-click mock ASR works; orb draggable.
