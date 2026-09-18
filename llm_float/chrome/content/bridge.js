@@ -32,7 +32,7 @@
       case "stopChat":   pushChat("stopChat", {}); break;
       case "speakText":  speakText(p.text || ""); break;
       case "stopSpeak":  stopContentTts(); hideBubble(); break;
-      case "startAsr":   openAsrMock(); break;
+      case "startAsr":   startAsrRecording(); break;
       case "setAsrText": {
         const t = String(p.text || "");
         if (!t) break;

@@ -39,6 +39,11 @@
   display: block;
 }
 
+/* ASR 识别模式：气泡需要接收点击（停止按钮），开启交互；字幕等展示模式保持穿透不挡页面 */
+.llm-float-bubble-frame.asr-active {
+  pointer-events: auto;
+}
+
 /* 悬浮助手总开关关闭时：隐藏全部悬浮 UI（悬浮球/聊天窗/字幕气泡） */
 .llm-float-disabled {
   display: none !important;

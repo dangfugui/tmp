@@ -135,11 +135,104 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: true });
       return true;
     }
+    case "llm_tts_ws": {
+      // WS 流式 TTS：background 建连收 PCM（不受页面 Mixed Content 限制）
+      bgTtsWs(msg, sendResponse);
+      return true;
+    }
+    case "llm_tts_ws_stop": {
+      bgCloseTtsSocket();
+      sendResponse({ ok: true });
+      break;
+    }
+    case "llm_tts_http": {
+      // HTTP 非流式 TTS：POST /v1/audio/speech → 完整音频（ArrayBuffer 回传）
+      fetch(msg.url, { method: "POST", headers: msg.headers || {}, body: JSON.stringify(msg.body || {}) })
+        .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
+        .then((buf) => sendResponse({ ok: true, data: buf }))
+        .catch((e) => sendResponse({ ok: false, error: String(e) }));
+      return true;
+    }
+    case "llm_asr": {
+      // ASR 非流式：POST /v1/audio/transcriptions（multipart，audio 为 ArrayBuffer）
+      const form = new FormData();
+      form.append("file", new Blob([msg.audio], { type: "audio/webm" }), msg.filename || "record.webm");
+      form.append("model", msg.model || "qwen3-asr");
+      form.append("language", msg.language || "zh");
+      fetch(msg.url, { method: "POST", headers: msg.headers || {}, body: form })
+        .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then((d) => sendResponse({ ok: true, text: (d && d.text) || "" }))
+        .catch((e) => sendResponse({ ok: false, error: String(e) }));
+      return true;
+    }
     default:
       sendResponse({ ok: false, error: "unknown message: " + msg.type });
       return true;
   }
 });
+
+/* ============================================================
+   媒体请求代理（content → background）：
+   页面 Mixed Content 限制（HTTPS 页面不能请求 http 内网），
+   统一挪到 background 扩展特权网络层执行（host_permissions <all_urls>）
+   ============================================================ */
+let bgTtsSocket = null;
+let bgTtsChunks = [];
+
+function bgCloseTtsSocket() {
+  if (bgTtsSocket) {
+    try { bgTtsSocket.onclose = null; bgTtsSocket.close(); } catch (e) { /* 忽略 */ }
+    bgTtsSocket = null;
+  }
+  bgTtsChunks = [];
+}
+
+/* WS 流式 TTS：建会话收 PCM，合成完成事件后合并回传（ArrayBuffer 经消息回 content 播放） */
+function bgTtsWs(msg, cb) {
+  bgCloseTtsSocket();
+  bgTtsChunks = [];
+  let socket;
+  try { socket = new WebSocket(msg.url); } catch (e) { cb({ ok: false, error: String(e) }); return; }
+  socket.binaryType = "arraybuffer";
+  bgTtsSocket = socket;
+  let done = false;
+  const finish = (res) => {
+    try { socket.close(); } catch (e) { /* 忽略 */ }
+    if (bgTtsSocket === socket) bgTtsSocket = null;
+    cb(res);
+  };
+  const timeout = setTimeout(() => { if (!done) finish({ ok: false, error: "timeout" }); }, 40000);
+  socket.onopen = () => {
+    try {
+      socket.send(JSON.stringify(msg.config || { type: "session.config" }));
+      socket.send(JSON.stringify({ type: "input.text", text: String(msg.text || "") }));
+      socket.send(JSON.stringify({ type: "input.done" }));
+    } catch (e) { /* 忽略 */ }
+  };
+  socket.onmessage = (ev) => {
+    if (typeof ev.data === "string") {
+      let tm = "";
+      try { tm = JSON.parse(ev.data).type || ""; } catch (e) { /* 忽略 */ }
+      if (tm && /done|complete|finished/i.test(tm)) {
+        done = true;
+        clearTimeout(timeout);
+        const total = bgTtsChunks.reduce((n, c) => n + c.byteLength, 0);
+        const merged = new Uint8Array(total);
+        let off = 0;
+        for (const c of bgTtsChunks) { merged.set(new Uint8Array(c), off); off += c.byteLength; }
+        bgTtsChunks = [];
+        finish({ ok: true, pcm: merged.buffer });
+      }
+      return;
+    }
+    if (ev.data instanceof ArrayBuffer) bgTtsChunks.push(ev.data);
+  };
+  socket.onerror = () => { /* onclose 兜底 */ };
+  socket.onclose = () => {
+    clearTimeout(timeout);
+    if (!done) finish({ ok: false, error: "ws closed" });
+  };
+}
 
 /* ============================================================
    Python 桥（可选）：background 连 Python SDK 的本地 WebSocket 服务

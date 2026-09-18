@@ -68,6 +68,7 @@ var BUBBLE = null; // iframe 容器（字幕气泡）
   }
   function hideBubble() {
     BUBBLE.classList.remove("show");
+    BUBBLE.classList.remove("asr-active");
     stopContentTts();
     stopAsr();
     pushBubble("stopDemo", {}); // 停止气泡内正在播放的 TTS / 正在识别的 ASR

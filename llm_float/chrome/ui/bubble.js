@@ -4,6 +4,7 @@ const subPrev = document.getElementById('sub-prev');
 const subCur = document.getElementById('sub-cur');
 const asrDot = document.getElementById('asr-dot');
 const asrText = document.getElementById('asr-text');
+const asrStopBtn = document.getElementById('asr-stop');
 
 let currentMode = 'subtitle';
 let asrFinal = '';
@@ -20,6 +21,7 @@ function setMode(payload) {
   } else if (currentMode === 'asr') {
     asrFinal = '';
     asrText.textContent = '聆听中…';
+    if (asrStopBtn) asrStopBtn.style.display = '';
   }
 }
 
@@ -40,9 +42,18 @@ function onTtsIdle() {
 function onAsrState(payload) {
   const listening = payload.state === 'listening';
   asrDot.style.visibility = listening ? 'visible' : 'hidden';
+  if (asrStopBtn) asrStopBtn.style.display = listening ? '' : 'none';
   if (!listening && !asrFinal) {
     asrText.textContent = '已停止';
   }
+}
+
+/* 停止按钮：通知 content 停止录音/识别并收尾（结果发到聊天窗） */
+if (asrStopBtn) {
+  asrStopBtn.addEventListener('click', () => {
+    console.log('[llm-float][bubble] asr stop clicked');
+    try { window.parent.postMessage({ kind: 'bubble', action: 'asr_stop' }, '*'); } catch (e) { /* 忽略 */ }
+  });
 }
 
 function renderAsr(interim) {

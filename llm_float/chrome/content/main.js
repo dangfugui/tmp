@@ -8,20 +8,20 @@
         else if (data.action === "drag_end") endDrag();
         else if (data.action === "open_chat") { endDrag(); showChat(); pushOrbState("chat"); }
         else if (data.action === "open_asr") {
-          // 悬浮球右键：开始语音识别（先停 TTS/旧识别，再开本页 ASR 气泡，识别在页面顶层执行）
+          // 悬浮球右键：开始语音识别（先停 TTS/旧识别；按设置模式分流：非流式录音 / 流式实时）
           stopContentTts();
-          stopAsr();
-          pushOrbState("asr");
-          showBubble();
-          pushBubble("setTheme", { theme: currentTheme });
-          startAsr();
+          startAsrRecording();
         }
       } else if (data.kind === "chat") {
         if (data.action === "drag_start") startMaskDrag(CHAT);
         else if (data.action === "hide") { hideChat(); pushOrbState("idle"); }
         else if (data.action === "chat_busy") { setUi({ chat: { open: true, busy: !!data.busy } }); }
       } else if (data.kind === "bubble") {
-        if (data.action === "demo_done") {
+        if (data.action === "asr_stop") {
+          // ASR 气泡停止按钮：停止录音/识别并收尾（结果发到聊天窗）
+          console.log("[llm-float][main] asr_stop received");
+          stopAsrAndRecognize();
+        } else if (data.action === "demo_done") {
           // 气泡结束：聊天窗开着时不改悬浮球状态（保持 chat 态）
           if (CHAT.classList.contains("show")) return;
           pushOrbState("idle");

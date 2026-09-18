@@ -125,6 +125,31 @@ body[data-theme="synthwave"][data-mode="asr"] { --bubble-glow: rgba(74, 222, 128
   text-shadow: 0 1px 3px rgba(0, 0, 0, .28);
 }
 
+/* 停止按钮（识别模式；圆形图标按钮，半透明底 + 主题强调色，随主题变化） */
+.asr-stop {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .38);
+  background: rgba(0, 0, 0, .22);
+  color: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  transition: 140ms ease;
+}
+.asr-stop svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+.asr-stop:hover {
+  background: var(--accent-grad, rgba(255, 77, 109, .55));
+  border-color: transparent;
+}
+
 /* 聆听波形 */
 .asr-wave {
   flex: 1 1 auto;

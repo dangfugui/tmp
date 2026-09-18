@@ -3,9 +3,8 @@
 // 未配置 HOST / 接口失败时回退浏览器 speechSynthesis。
   function stopContentTts() {
     try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) { /* 忽略 */ }
-    if (wsTtsSocket) { try { wsTtsSocket.close(); } catch (e) { /* 忽略 */ } wsTtsSocket = null; }
-    if (httpTtsAbort) { try { httpTtsAbort.abort(); } catch (e) { /* 忽略 */ } httpTtsAbort = null; }
-    wsTtsChunks = [];
+    // 网络请求在 background 执行：通知断开 WS（fetch 无法中止，结果到达后会被 ttsCanceled 忽略）
+    try { chrome.runtime.sendMessage({ type: "llm_tts_ws_stop" }); } catch (e) { /* 忽略 */ }
     ttsCanceled = true;
   }
 
@@ -60,8 +59,6 @@
   }
 
   // ---------- WS 流式 TTS（qwen3-tts /v1/audio/speech/stream）----------
-  var wsTtsSocket = null;
-  var wsTtsChunks = [];
   var wsTtsAudioCtx = null;
   var ttsCanceled = false; // 被 stopContentTts 中断标记（避免中断后回退重播）
 
@@ -73,12 +70,16 @@
     });
   }
 
+  // HOST 容错：允许误填完整接口路径（如 .../v1/audio/speech/stream），剥到根地址再拼接
+  function normalizeHost(h) {
+    return String(h || "").trim().replace(/\/+$/, "").replace(/\/(v1\/audio\/(speech\/stream|speech|transcriptions))$/i, "");
+  }
+
   // HOST 必须带协议（如 wss://llm.nucc.com）；不自动补协议，未带协议视为无效由调用方回退
   function buildWsUrl(host, model, apiKey) {
-    let h = String(host || "").trim();
+    let h = normalizeHost(host);
     if (!h || !/^[a-z]+:\/\//i.test(h)) return "";
     h = h.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:");
-    h = h.replace(/\/+$/, "");
     let url = h + "/v1/audio/speech/stream?model=" + encodeURIComponent(model || "qwen3-tts");
     // 浏览器 WebSocket 无法携带自定义请求头（Authorization），API Key 拼入 query 尝试鉴权
     if (apiKey) url += "&api_key=" + encodeURIComponent(apiKey);
@@ -114,16 +115,14 @@
     });
   }
 
-  // HTTP 非流式 TTS（/v1/audio/speech，OpenAI 风格 POST）：fetch 可携带 Authorization 头
-  var httpTtsAbort = null;
+  // HTTP 非流式 TTS（/v1/audio/speech，OpenAI 风格 POST）：网络在 background 执行（可带 Authorization 头，避开 Mixed Content）
   function httpTtsSpeak(text, cfg) {
     return new Promise((resolve) => {
-      let h = String(cfg.tts_host || "").trim();
+      const h = normalizeHost(cfg.tts_host);
       if (!h || !/^https?:\/\//i.test(h)) {
-        console.warn("[llm-float][tts] HTTP TTS: HOST 未配置或未带 http(s):// 协议，回退浏览器合成 (当前值: '" + h + "')");
+        console.warn("[llm-float][tts] HTTP TTS: HOST 未配置或未带 http(s):// 协议，回退浏览器合成 (当前值: '" + String(cfg.tts_host || "").trim() + "')");
         resolve(false); return;
       }
-      h = h.replace(/\/+$/, "");
       const headers = { "Content-Type": "application/json" };
       if (cfg.tts_api_key) headers["Authorization"] = "Bearer " + cfg.tts_api_key;
       const body = {
@@ -135,24 +134,26 @@
       };
       if (cfg.tts_language) body.language = cfg.tts_language;
       if (cfg.tts_instructions) body.instructions = cfg.tts_instructions;
-      httpTtsAbort = new AbortController();
-      console.log("[llm-float][tts] HTTP TTS 发起: POST " + h + "/v1/audio/speech");
-      fetch(h + "/v1/audio/speech", { method: "POST", headers, body: JSON.stringify(body), signal: httpTtsAbort.signal })
-        .then((r) => {
-          if (!r.ok) throw new Error("HTTP " + r.status);
-          return r.arrayBuffer();
-        })
-        .then((buf) => {
+      console.log("[llm-float][tts] HTTP TTS 发起(background): POST " + h + "/v1/audio/speech");
+      let settled = false;
+      const timeout = setTimeout(() => { if (!settled) { settled = true; resolve(false); } }, 35000);
+      try {
+        chrome.runtime.sendMessage({ type: "llm_tts_http", url: h + "/v1/audio/speech", headers, body }, (resp) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          if (chrome.runtime.lastError || !resp || !resp.ok) {
+            console.error("[llm-float][tts] HTTP TTS 失败(background):", (resp && resp.error) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || "?");
+            resolve(false);
+            return;
+          }
           const fmt = String(cfg.tts_response_format || "pcm").toLowerCase();
-          if (fmt === "pcm") return playPcm([buf], Number(cfg.tts_sample_rate) || 24000);
-          return playEncoded(buf); // mp3 / opus / wav 等 → decodeAudioData
-        })
-        .then(() => resolve(true))
-        .catch((e) => {
-          if (e && e.name === "AbortError") { resolve(false); return; }
-          console.error("[llm-float][tts] HTTP TTS 失败:", e);
-          resolve(false);
+          const play = fmt === "pcm" ? playPcm([resp.data], Number(cfg.tts_sample_rate) || 24000) : playEncoded(resp.data);
+          play.then(() => resolve(true));
         });
+      } catch (e) {
+        if (!settled) { settled = true; clearTimeout(timeout); resolve(false); }
+      }
     });
   }
 
@@ -175,69 +176,42 @@
     });
   }
 
-  // 走配置的 WS 流式 TTS 接口（/v1/audio/speech/stream）合成并播放；true=已处理，false=失败可回退
+  // 走配置的 WS 流式 TTS（/v1/audio/speech/stream）：网络在 background 执行（避开页面 Mixed Content）
+  // true=已处理，false=失败可回退
   function wsTtsSpeak(text, cfg) {
     return new Promise((resolve) => {
-      {
-        const url = buildWsUrl(cfg.tts_host, cfg.tts_model, cfg.tts_api_key);
-        if (!url) {
-          console.warn("[llm-float][tts] WS TTS: HOST 未配置或未带 ws(s):// 协议，回退浏览器合成 (当前值: '" + String(cfg.tts_host || "").trim() + "')");
-          resolve(false); return;
-        }
-        console.log("[llm-float][tts] WS TTS 发起: " + url);
-        let socket;
-        try { socket = new WebSocket(url); } catch (e) { resolve(false); return; }
-        socket.binaryType = "arraybuffer";
-        wsTtsSocket = socket;
-        wsTtsChunks = [];
-        let done = false;     // 已收到合成完成事件并开始播放
-        let finished = false; // 已 resolve 过
-        const finish = (ok) => { if (!finished) { finished = true; resolve(ok); } };
-        const timeout = setTimeout(() => { try { socket.close(); } catch (e) { /* 忽略 */ } finish(true); }, 30000);
-        socket.onopen = () => {
-          try {
-            socket.send(JSON.stringify({
-              type: "session.config",
-              model: cfg.tts_model || "qwen3-tts",
-              voice: cfg.tts_voice || "vivian",
-              response_format: cfg.tts_response_format || "pcm",
-              sample_rate: Number(cfg.tts_sample_rate) || 24000,
-              language: cfg.tts_language || "zh",
-              speed: Number(cfg.tts_speed) || 1.0,
-              instructions: cfg.tts_instructions || "",
-            }));
-            socket.send(JSON.stringify({ type: "input.text", text: String(text) }));
-            socket.send(JSON.stringify({ type: "input.done" }));
-          } catch (e) { /* 忽略 */ }
-        };
-        socket.onmessage = (ev) => {
-          if (typeof ev.data === "string") {
-            // JSON 事件：合成完成类事件触发播放
-            let t = "";
-            try { t = JSON.parse(ev.data).type || ""; } catch (e) { /* 忽略 */ }
-            if (t && /done|complete|finished/i.test(t)) {
-              done = true;
-              clearTimeout(timeout);
-              playPcm(wsTtsChunks, Number(cfg.tts_sample_rate) || 24000).then(() => {
-                try { socket.send(JSON.stringify({ type: "session.close" })); } catch (e) { /* 忽略 */ }
-                try { socket.close(); } catch (e) { /* 忽略 */ }
-                finish(true);
-              });
-            }
+      const url = buildWsUrl(cfg.tts_host, cfg.tts_model, cfg.tts_api_key);
+      if (!url) {
+        console.warn("[llm-float][tts] WS TTS: HOST 未配置或未带 ws(s):// 协议，回退浏览器合成 (当前值: '" + String(cfg.tts_host || "").trim() + "')");
+        resolve(false); return;
+      }
+      console.log("[llm-float][tts] WS TTS 发起(background): " + url);
+      const config = {
+        type: "session.config",
+        model: cfg.tts_model || "qwen3-tts",
+        voice: cfg.tts_voice || "vivian",
+        response_format: cfg.tts_response_format || "pcm",
+        sample_rate: Number(cfg.tts_sample_rate) || 24000,
+        language: cfg.tts_language || "zh",
+        speed: Number(cfg.tts_speed) || 1.0,
+        instructions: cfg.tts_instructions || "",
+      };
+      let settled = false;
+      const timeout = setTimeout(() => { if (!settled) { settled = true; resolve(false); } }, 35000);
+      try {
+        chrome.runtime.sendMessage({ type: "llm_tts_ws", url, config, text }, (resp) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          if (chrome.runtime.lastError || !resp || !resp.ok) {
+            console.error("[llm-float][tts] WS TTS 失败(background):", (resp && resp.error) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || "?");
+            resolve(false);
             return;
           }
-          // 二进制：PCM 音频分片（binaryType=arraybuffer）
-          if (ev.data instanceof ArrayBuffer) wsTtsChunks.push(ev.data);
-        };
-        socket.onerror = () => { console.error("[llm-float][tts] WS TTS 连接失败: " + url); /* 统一由 onclose 处理 */ };
-        socket.onclose = (ev) => {
-          clearTimeout(timeout);
-          if (wsTtsSocket === socket) wsTtsSocket = null;
-          if (!done) {
-            if (!ttsCanceled) console.warn("[llm-float][tts] WS TTS 未完成即断开 (code=" + ev.code + ")，回退浏览器合成");
-            finish(false); // 未完成即断开 → 调用方回退
-          }
-        };
+          playPcm([resp.pcm], Number(cfg.tts_sample_rate) || 24000).then(() => resolve(true));
+        });
+      } catch (e) {
+        if (!settled) { settled = true; clearTimeout(timeout); resolve(false); }
       }
     });
   }

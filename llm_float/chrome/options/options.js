@@ -38,6 +38,19 @@ const STORAGE_SCHEMA = [
     ],
   },
   {
+    section: '识别（ASR）',
+    segmentKey: 'asr_mode',
+    segmentOptions: [['off', '关'], ['stream', '流式'], ['http', '非流式']],
+    segmentDefault: 'http',
+    items: [
+      // ASR 接口配置（非流式 POST /v1/audio/transcriptions；流式实时识别待接口文档接入）
+      { key: 'asr_host', label: 'ASR 服务 HOST', type: 'text', value: '' },
+      { key: 'asr_api_key', label: 'ASR API Key', type: 'password', value: '' },
+      { key: 'asr_model', label: '识别模型', type: 'text', value: 'qwen3-asr' },
+      { key: 'asr_language', label: '识别语言', type: 'text', value: 'zh' },
+    ],
+  },
+  {
     section: '未启用',
     collapsed: true,
     items: [

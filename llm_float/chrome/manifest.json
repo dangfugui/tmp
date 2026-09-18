@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LLM Float 悬浮助手",
   "description": "悬浮球 AI 聊天助手（QwenPaw 直连，核心 UI 不依赖 Python）",
-  "version": "0.6.21",
+  "version": "0.6.27",
   "options_page": "options/options.html",
   "permissions": ["storage", "tabs", "alarms", "scripting"],
   "host_permissions": ["<all_urls>"],
