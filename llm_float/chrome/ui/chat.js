@@ -5,11 +5,6 @@ const titlebarEl = document.getElementById("titlebar");
 
 const WELCOME = "你好，我是 AI 助手 👋\n输入消息即可开始对话（已接入 QwenPaw 聊天接口）。";
 
-const PALETTES = [
-  { title: "主色调", colors: ["#49BCCF", "#5BC2D3", "#45C1D6", "#00BCDC", "#40A8BD", "#AEF3FF"] },
-  { title: "点缀色", colors: ["#2C3E50", "#3373B8"] },
-  { title: "中性色", colors: ["#FFFFFF", "#AFAFAF", "#848383", "#656565", "#555555", "#525252", "#474747", "#313131", "#282828"] },
-];
 
 let busy = false;
 let botEl = null; // 当前正在流式接收的机器人消息元素
@@ -264,27 +259,6 @@ function addMessage(role, text) {
   scrollToEnd();
 }
 
-function addPalette(groups) {
-  const msg = el("div", "msg bot palette-msg");
-  const bubble = el("div", "bubble palette");
-
-  groups.forEach((group) => {
-    bubble.appendChild(el("div", "palette-title", group.title));
-    const grid = el("div", "swatches");
-    group.colors.forEach((hex) => {
-      const item = el("div", "swatch");
-      const chip = el("span", "chip");
-      chip.style.background = hex;
-      item.append(chip, el("span", "code", hex.toUpperCase()));
-      grid.appendChild(item);
-    });
-    bubble.appendChild(grid);
-  });
-
-  msg.append(bubble, makeMeta(() => bubble.innerText));
-  messagesEl.appendChild(msg);
-  scrollToEnd();
-}
 
 function showTyping() {
   const msg = document.createElement("div");
@@ -614,10 +588,8 @@ document.getElementById("btn-min").addEventListener("click", () => callApi("hide
 document.getElementById("btn-clear").addEventListener("click", () => {
   messagesEl.innerHTML = "";
   addMessage("bot", WELCOME);
-  addPalette(PALETTES);
 });
 
 /* ---------- init ---------- */
 addMessage("bot", WELCOME);
-addPalette(PALETTES);
 inputEl.focus();

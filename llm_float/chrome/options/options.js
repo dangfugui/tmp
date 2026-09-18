@@ -6,7 +6,7 @@ const STORAGE_SCHEMA = [
     section: '基础',
     items: [
       { key: 'orb_opacity', label: '悬浮球透明度', type: 'number', value: 1.0, min: 0.2, max: 1.0, step: 0.05 },
-      { key: 'theme', label: '主题', type: 'select', value: 'glass', options: [['glass', '液态玻璃'], ['flat', '极简扁平'], ['neon', '霓虹赛博'], ['macaron', '马卡龙奶油'], ['metal', '金属质感'], ['candy', '活力糖果'], ['morandi', '莫兰迪雅致'], ['synthwave', '复古合成波'], ['green', '自然绿意'], ['mono', '黑白极简']] },
+      { key: 'theme', label: '主题', type: 'select', value: 'glass', options: [['glass', '液态玻璃'], ['flat', '极简扁平'], ['neon', '霓虹赛博'], ['macaron', '马卡龙奶油'], ['metal', '金属质感'], ['candy', '活力糖果'], ['morandi', '莫兰迪雅致'], ['synthwave', '复古合成波'], ['green', '自然绿意'], ['mono', '黑白极简'], ['brand', '品牌蓝']] },
       { key: 'orb_size', label: '悬浮球大小', type: 'number', value: 68, min: 40, max: 96, step: 1 },
     ],
   },

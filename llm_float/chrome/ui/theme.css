@@ -580,6 +580,50 @@
   --orb-settings-shadow: 0 6px 16px rgba(0,0,0,.22);
 }
 
+/* ================= brand（品牌蓝 · G11，源自聊天色盘）================= */
+[data-theme="brand"] {
+  --bg-card: rgba(8, 24, 44, 0.95);
+  --bg-glass: rgba(0, 188, 220, 0.07);
+  --bg-glass-strong: rgba(0, 188, 220, 0.14);
+  --titlebar-bg: rgba(0, 188, 220, 0.05);
+  --divider: rgba(0, 188, 220, 0.2);
+  --text-primary: #eaf6fb;
+  --text-secondary: #9cc3d4;
+  --accent: #00bcdc;
+  --accent-2: #3373b8;
+  --accent-grad: linear-gradient(135deg, #3373b8 0%, #00bcdc 55%, #5bc2d3 100%);
+  --input-bg: rgba(0, 188, 220, 0.07);
+  --input-border: rgba(0, 188, 220, 0.26);
+  --focus-ring: rgba(0, 188, 220, 0.32);
+  --chip-bg: rgba(0, 188, 220, 0.09);
+  --shadow-card: 0 18px 44px rgba(0, 0, 0, 0.55);
+  --glass-border: rgba(0, 188, 220, 0.3);
+
+  /* 悬浮球 · 品牌蓝五态（青蓝渐变 + 藏蓝点缀，色盘：主色 #00BCDC / 点缀 #3373B8 #2C3E50） */
+  --orb-glass-bg: radial-gradient(circle at 32% 22%, rgba(255,255,255,.85), rgba(255,255,255,.18) 40%, rgba(255,255,255,0) 58%);
+  --orb-border: 1.5px solid rgba(174, 243, 255, .5);
+  --orb-idle-bg: linear-gradient(150deg, #5bc2d3 0%, #00bcdc 45%, #3373b8 100%);
+  --orb-idle-color: #fff;
+  --orb-idle-glow: rgba(0, 188, 220, .45);
+  --orb-idle-shadow: 0 10px 24px rgba(0,188,220,.38), 0 3px 8px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.55);
+  --orb-chat-bg: linear-gradient(150deg, #3373b8 0%, #2c3e50 100%);
+  --orb-chat-color: #fff;
+  --orb-chat-glow: rgba(51, 115, 184, .5);
+  --orb-chat-shadow: 0 10px 24px rgba(51,115,184,.4), 0 3px 8px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.35);
+  --orb-tts-bg: linear-gradient(150deg, #45c1d6 0%, #40a8bd 100%);
+  --orb-tts-color: #fff;
+  --orb-tts-glow: rgba(69, 193, 214, .5);
+  --orb-tts-shadow: 0 10px 24px rgba(69,193,214,.4), 0 3px 8px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.5);
+  --orb-asr-bg: linear-gradient(150deg, #00bcdc 0%, #2c3e50 100%);
+  --orb-asr-color: #fff;
+  --orb-asr-glow: rgba(0, 188, 220, .45);
+  --orb-asr-shadow: 0 10px 24px rgba(0,188,220,.38), 0 3px 8px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.4);
+  --orb-settings-bg: linear-gradient(150deg, #aef3ff 0%, #5bc2d3 100%);
+  --orb-settings-color: #fff;
+  --orb-settings-glow: rgba(174, 243, 255, .5);
+  --orb-settings-shadow: 0 10px 24px rgba(174,243,255,.35), 0 3px 8px rgba(0,0,0,.15), inset 0 2px 3px rgba(255,255,255,.6);
+}
+
 /* 滚动条 */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }

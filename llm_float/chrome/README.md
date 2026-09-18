@@ -53,6 +53,7 @@ py-sdk/
 | `synthwave` | 复古合成波 | G8 |
 | `green` | 自然绿意 | G9 |
 | `mono` | 黑白极简 | G10 |
+| `brand` | 品牌蓝 | G11 |
 
 - **预览页与 theme.css 同源联动**：theme.css 选择器为 `[data-theme="…"]`（body 或任意容器均可），预览页每张卡片挂各自 `data-theme` 实时渲染；改 theme.css 的 `--orb-*` 变量 → 插件悬浮球与预览页同步变化（重新加载扩展后生效）。
 - 悬浮球五态配色变量：`--orb-{idle,chat,settings,tts,asr}-{bg,color,glow,shadow}` + `--orb-glass-bg` / `--orb-border`。

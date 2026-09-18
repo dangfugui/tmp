@@ -164,7 +164,7 @@ class FloatSDK:
         """切换主题。可选值（与设置页/预览页 G1~G10 一致）：
         glass 液态玻璃 / flat 极简扁平 / neon 霓虹赛博 / macaron 马卡龙奶油 /
         metal 金属质感 / candy 活力糖果 / morandi 莫兰迪雅致 / synthwave 复古合成波 /
-        green 自然绿意 / mono 黑白极简；旧值 dark/blue/light 已停用（自动映射 flat）。"""
+        green 自然绿意 / mono 黑白极简 / brand 品牌蓝；旧值 dark/blue/light 已停用（自动映射 flat）。"""
         return await self._call("setTheme", self._params(tabId, theme=theme))
 
     async def setOrbSize(self, orb_size, tabId=None):

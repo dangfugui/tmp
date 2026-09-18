@@ -22,10 +22,11 @@
     { no: 7, name: "莫兰迪雅致", desc: "莫兰迪灰调色系 + 细描边，低对比文艺感" },
     { no: 8, name: "复古合成波", desc: "深紫夜空 + 霓虹粉紫 + 网格纹理，Synthwave 复古" },
     { no: 9, name: "自然绿意", desc: "苔藓森林绿渐变，哑光磨砂质感，沉稳安静" },
-    { no: 10, name: "黑白极简", desc: "黑白双色交替 + 粗线条图标，纯粹高对比" }
+    { no: 10, name: "黑白极简", desc: "黑白双色交替 + 粗线条图标，纯粹高对比" },
+    { no: 11, name: "品牌蓝", desc: "青蓝品牌渐变 + 藏蓝点缀，源自聊天色盘，商务清爽" }
   ];
 
-  var THEME_KEYS = { 1: "glass", 2: "flat", 3: "neon", 4: "macaron", 5: "metal", 6: "candy", 7: "morandi", 8: "synthwave", 9: "green", 10: "mono" };
+  var THEME_KEYS = { 1: "glass", 2: "flat", 3: "neon", 4: "macaron", 5: "metal", 6: "candy", 7: "morandi", 8: "synthwave", 9: "green", 10: "mono", 11: "brand" };
 
   var grid = document.getElementById("grid");
   STYLES.forEach(function (s) {
@@ -33,7 +34,7 @@
     card.className = "style-card g" + s.no;
     card.dataset.no = s.no;
     card.dataset.name = s.name;
-    card.dataset.theme = (THEME_KEYS || { 1: "glass", 2: "flat", 3: "neon", 4: "macaron", 5: "metal", 6: "candy", 7: "morandi", 8: "synthwave", 9: "green", 10: "mono" })[s.no] || "glass";
+    card.dataset.theme = (THEME_KEYS || { 1: "glass", 2: "flat", 3: "neon", 4: "macaron", 5: "metal", 6: "candy", 7: "morandi", 8: "synthwave", 9: "green", 10: "mono", 11: "brand" })[s.no] || "glass";
 
     var head = document.createElement("div");
     head.className = "style-head";
