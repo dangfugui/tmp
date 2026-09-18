@@ -27,6 +27,10 @@ function onTtsSentence(payload) {
   const prev = subCur.textContent;
   subPrev.textContent = prev === '等待播报…' ? '' : prev;
   subCur.textContent = payload.text;
+  // 从左到右扫入动画（每次新句子重新触发）
+  subCur.classList.remove('scan');
+  void subCur.offsetWidth; // 强制重排以重启动画
+  subCur.classList.add('scan');
 }
 
 function onTtsIdle() {

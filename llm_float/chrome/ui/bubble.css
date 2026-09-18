@@ -151,3 +151,12 @@ body[data-theme="synthwave"][data-mode="asr"] { --bubble-glow: rgba(74, 222, 128
   0%, 100% { transform: scaleY(.45); opacity: .55; }
   50% { transform: scaleY(1); opacity: 1; }
 }
+
+/* 字幕从左到右扫入（每次新句子触发一次） */
+.sub-cur.scan {
+  animation: llmScan .38s cubic-bezier(.25, .8, .3, 1);
+}
+@keyframes llmScan {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
