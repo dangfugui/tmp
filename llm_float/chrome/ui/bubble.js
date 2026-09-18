@@ -104,42 +104,6 @@ function speakNext() {
   try { speechSynthesis.speak(u); } catch (e) { speakNext(); }
 }
 
-/* ===== ASR demo：Web Speech API（浏览器自带，无需 Python） ===== */
-let recognition = null;
-function runAsrDemo() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    onAsrState({ state: 'idle' });
-    asrText.textContent = '当前浏览器不支持语音识别';
-    return;
-  }
-  setMode({ mode: 'asr' });
-  onAsrState({ state: 'listening' });
-  if (recognition) { try { recognition.stop(); } catch (e) { /* 忽略 */ } }
-  recognition = new SR();
-  recognition.lang = 'zh-CN';
-  recognition.interimResults = true;
-  recognition.continuous = false;
-  recognition.onresult = (ev) => {
-    let interim = '', final = '';
-    for (let i = 0; i < ev.results.length; i++) {
-      const r = ev.results[i];
-      if (r.isFinal) final += r[0].transcript;
-      else interim += r[0].transcript;
-    }
-    if (final) onAsrFinal({ text: final });
-    else if (interim) onAsrPartial({ text: interim });
-  };
-  recognition.onend = () => {
-    if (!asrFinal) onAsrState({ state: 'idle' });
-    notifyDemoDone();
-  };
-  recognition.onerror = () => {
-    onAsrState({ state: 'idle' });
-  };
-  try { recognition.start(); } catch (e) { onAsrState({ state: 'idle' }); }
-}
-
 /* ===== 兜底：iframe 加载后直接读 storage 主题 ===== */
 (function initFromStorage() {
   try {
@@ -160,11 +124,15 @@ window.assistant = {
   onAsrState,
   onAsrPartial,
   onAsrFinal,
+  stopDemo() {
+    // 互斥时调用：停止正在播放的 TTS（ASR 由 content 顶层停止）
+    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { /* 忽略 */ }
+  },
   runDemo(payload) {
+    // 切换 demo 前先停旧的 TTS（ASR 由 content 顶层管理）
+    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { /* 忽略 */ }
     if (payload && payload.type === 'tts') {
       runTtsDemo(payload.text || '这是一段语音播报演示，用于展示字幕气泡效果。欢迎使用悬浮助手。');
-    } else if (payload && payload.type === 'asr') {
-      runAsrDemo();
     }
   },
   setTheme(payload) {

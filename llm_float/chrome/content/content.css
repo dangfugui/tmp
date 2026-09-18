@@ -1,18 +1,4 @@
 /* LLM Float 悬浮助手 - 注入容器样式 */
-#llm-float-root {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 0;
-  height: 0;
-  z-index: 2147483647;
-  pointer-events: none;
-}
-
-#llm-float-root iframe {
-  pointer-events: auto;
-}
-
 .llm-float-orb-frame {
   position: fixed;
   width: 120px;
@@ -51,4 +37,9 @@
 
 .llm-float-bubble-frame.show {
   display: block;
+}
+
+/* 悬浮助手总开关关闭时：隐藏全部悬浮 UI（悬浮球/聊天窗/字幕气泡） */
+.llm-float-disabled {
+  display: none !important;
 }

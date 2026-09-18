@@ -61,7 +61,6 @@ const STORAGE_SCHEMA = [
   },
 ];
 
-const BROADCAST_KEYS = ['theme', 'orb_size', 'orb_opacity', 'chat_profiles'];
 let currentSettings = [];
 
 function showToast(msg, timeout = 1600) {

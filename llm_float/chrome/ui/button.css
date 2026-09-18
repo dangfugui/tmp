@@ -1,6 +1,6 @@
 /* ============================================================
-   悬浮球 · 五态设计（变量驱动，随主题切换）
-   state: idle(静默) / chat / settings / tts(字幕) / asr(识别)
+   悬浮球 · 四态设计（变量驱动，随主题切换）
+   state: idle(静默) / chat / tts(字幕) / asr(识别)
    主题变量定义见 theme.css：--orb-{state}-{bg,color,glow,shadow}
    ============================================================ */
 * { box-sizing: border-box; }
@@ -70,7 +70,7 @@ body {
   cursor: grabbing;
 }
 
-/* ---------- 五态：背景 / 图标色 / 光晕 ---------- */
+/* ---------- 四态：背景 / 图标色 / 光晕 ---------- */
 .orb[data-state="idle"] {
   background: var(--orb-idle-bg);
   color: var(--orb-idle-color, #fff);
@@ -80,11 +80,6 @@ body {
   background: var(--orb-chat-bg);
   color: var(--orb-chat-color, #fff);
   box-shadow: var(--orb-chat-shadow);
-}
-.orb[data-state="settings"] {
-  background: var(--orb-settings-bg);
-  color: var(--orb-settings-color, #fff);
-  box-shadow: var(--orb-settings-shadow);
 }
 .orb[data-state="tts"] {
   background: var(--orb-tts-bg);
@@ -97,7 +92,7 @@ body {
   box-shadow: var(--orb-asr-shadow);
 }
 
-/* ---------- 五态图标 ---------- */
+/* ---------- 四态图标 ---------- */
 .state-icon {
   position: absolute;
   inset: 0;
@@ -120,7 +115,6 @@ body[data-theme="synthwave"] .state-icon svg {
 
 .orb[data-state="idle"] .icon-idle,
 .orb[data-state="chat"] .icon-chat,
-.orb[data-state="settings"] .icon-settings,
 .orb[data-state="tts"] .icon-tts,
 .orb[data-state="asr"] .icon-asr {
   opacity: 1;
@@ -142,9 +136,6 @@ body[data-theme="synthwave"] .orb[data-state="idle"] { animation: glowPulse 2.6s
 .orb[data-state="chat"] .icon-chat svg { animation: chatBob 2.4s ease-in-out infinite; }
 @keyframes chatBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 
-/* settings 设置：齿轮缓转 */
-.orb[data-state="settings"] .icon-settings svg { animation: gearSpin 6s linear infinite; transform-origin: center; }
-@keyframes gearSpin { to { transform: rotate(360deg); } }
 
 /* tts 字幕：音量脉动 + 音符上升 */
 .orb[data-state="tts"] .icon-tts svg { animation: ttsWave .9s ease-in-out infinite; }

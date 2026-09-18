@@ -124,7 +124,6 @@ body[data-theme="synthwave"][data-mode="asr"] { --bubble-glow: rgba(74, 222, 128
   overflow-wrap: anywhere;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .28);
 }
-.interim { opacity: .8; }
 
 /* 聆听波形 */
 .asr-wave {

@@ -11,12 +11,6 @@ const PALETTES = [
   { title: "中性色", colors: ["#FFFFFF", "#AFAFAF", "#848383", "#656565", "#555555", "#525252", "#474747", "#313131", "#282828"] },
 ];
 
-// 仅在没有 Python 后端（如纯浏览器打开预览）时兜底使用
-const MOCK_REPLIES = [
-  "当前未检测到 Python 后端，这是本地 Mock 回复。",
-  "请通过 Python 启动悬浮窗应用后使用真实聊天。",
-];
-
 let busy = false;
 let botEl = null; // 当前正在流式接收的机器人消息元素
 let pendingBotText = null; // 待渲染的流式文本（rAF 节流）
@@ -44,8 +38,6 @@ window.addEventListener("message", (e) => {
     });
   } catch (e) { /* 非扩展环境忽略 */ }
 })();
-
-initChatTitle();
 
 /* ================= Markdown 渲染（安全：先转义，再转换） ================= */
 
@@ -76,7 +68,7 @@ function renderMarkdown(src) {
     return "\u0000IC" + (inlineCodes.length - 1) + "\u0000";
   });
 
-  // 链接 [text](url)：onclick return false 防止 Qt WebEngine 在当前页导航
+  // 链接 [text](url)：onclick return false 防止 iframe 内导航
   text = text.replace(
     /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
     '<a class="md-link" href="$2" rel="noopener" onclick="return false">$1</a>'
@@ -333,6 +325,8 @@ function setBusy(v) {
   busy = v;
   sendBtn.classList.toggle("stop", v);
   sendBtn.title = v ? "停止" : "发送";
+  // 同步 busy 给 content 的 uiState（经 uiState 事件到 Python）
+  try { window.parent.postMessage({ kind: "chat", action: "chat_busy", busy: v }, "*"); } catch (e) { /* 忽略 */ }
 }
 
 function stopSend() {
@@ -353,25 +347,11 @@ function finishReply(error) {
   if (error) addMessage("bot", error);
 }
 
-/* ---------- Python 推送：window.assistant.onChatMessage ----------
-   payload:
-     { role: "bot", text: "...", done: false }   流式增量（text 为累计文本）
-     { role: "bot", text: "...", done: true }    回复结束
-     { role: "bot", error: "..." }               出错（等价 done）        */
 window.assistant = window.assistant || {};
-window.assistant.onUserMessage = function (payload) {
-  // open_chat(send) 等入口推送的用户消息：显示为用户气泡
-  if (!payload || !payload.text) return;
-  addMessage("user", String(payload.text));
-};
-
-window.assistant.onChatBusy = function (payload) {
-  // 回复期间按钮切换为「停止」（open_chat(send) 等 Python 侧入口推送）
-  setBusy(!!(payload && payload.busy));
-};
-
 window.assistant.onChatMessage = function (payload) {
   if (!payload) return;
+  // 事件上行 → Python（事件名 = SDK 事件名）
+  try { chrome.runtime.sendMessage({ type: "llm_bridge_event", name: "onChatMessage", payload }); } catch (e) { /* 忽略 */ }
   if (payload.error) {
     finishReply(payload.error);
     return;
@@ -539,16 +519,18 @@ function send() {
 
   // Chrome 扩展：本地直连 QwenPaw（SSE 解析与 Python 版一致）
   qwenChat(text);
-  return;
-
-  // 无后端（纯浏览器预览）：本地 Mock 兜底
-  setTimeout(() => {
-    removeTyping();
-    addMessage("bot", MOCK_REPLIES[Math.floor(Math.random() * MOCK_REPLIES.length)]);
-    setBusy(false);
-    inputEl.focus();
-  }, 500 + Math.random() * 500);
 }
+
+/* ---------- Python 桥 / 控制台：外部发送与停止（方法名 = SDK 命令名） ---------- */
+window.assistant.sendText = function (payload) {
+  const text = payload && payload.text ? String(payload.text).trim() : "";
+  if (!text || busy) return;
+  addMessage("user", text);
+  setBusy(true);
+  showTyping();
+  qwenChat(text);
+};
+window.assistant.stopChat = function () { stopSend(); };
 
 /* ---------- input behavior ---------- */
 function autoResize() {
@@ -584,15 +566,7 @@ function callApi(method) {
   }
 }
 
-window.assistant.setChatTitle = function (payload) {
-  if (!payload || !payload.chatName) return;
-  const select = document.getElementById("chat-title");
-  if (select && Array.from(select.options).some((o) => o.value === payload.chatName)) {
-    select.value = payload.chatName;
-  }
-};
-
-/* 配置列表到达（Python 推送）：填充下拉框 */
+/* 配置列表到达：填充下拉框 */
 window.assistant.setChatProfiles = function (payload) {
   const select = document.getElementById("chat-title");
   if (!select || !payload || !Array.isArray(payload.profiles)) return;
@@ -612,7 +586,7 @@ window.assistant.setChatProfiles = function (payload) {
               "values:", Array.from(select.options).map((o) => o.value).join("|"));
 };
 
-/* 当前匹配配置到达（Python 推送）：选中 */
+/* 当前匹配配置到达：选中 */
 window.assistant.setActiveChatProfile = function (payload) {
   const select = document.getElementById("chat-title");
   if (!select || !payload || !payload.profile) return;
@@ -622,15 +596,6 @@ window.assistant.setActiveChatProfile = function (payload) {
     select.value = name;
   }
 };
-
-/* 标题下拉框：发起请求，由 Python 推送配置列表与当前匹配项 */
-function initChatTitle() {
-  // 配置由 content script 推送 setChatProfiles / setActiveChatProfile 填充
-  const select = document.getElementById("chat-title");
-  if (select && !select.options.length) {
-    select.innerHTML = '<option value="">AI 助手</option>';
-  }
-}
 
 document.getElementById("chat-title").addEventListener("change", (e) => {
   const name = e.target.value;
