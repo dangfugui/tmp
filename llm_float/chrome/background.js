@@ -183,7 +183,9 @@ async function ensureInjected(tab) {
   } catch (e) { /* 未注入，尝试注入 */ }
   try {
     await chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: ["content/content.css"] });
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content/content.js"] });
+    for (const f of ["content/ui.js", "content/drag.js", "content/tts.js", "content/asr.js", "content/bridge.js", "content/main.js"]) {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [f] });
+    }
     return true;
   } catch (e) {
     return false;

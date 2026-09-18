@@ -1,48 +1,31 @@
-﻿{
-    "manifest_version":  3,
-    "name":  "LLM Float 悬浮助手",
-    "description":  "悬浮球 AI 聊天助手（QwenPaw 直连，核心 UI 不依赖 Python）",
-    "version":  "0.6.2",
-    "options_page":  "options/options.html",
-    "permissions":  [
-                        "storage",
-                        "tabs",
-                        "alarms",
-                        "scripting"
-                    ],
-    "host_permissions":  [
-                             "\u003call_urls\u003e"
-                         ],
-    "background":  {
-                       "service_worker":  "background.js"
-                   },
-    "action":  {
-                   "default_title":  "LLM Float",
-                   "default_popup":  "popup/popup.html"
-               },
-    "content_scripts":  [
-                            {
-                                "matches":  [
-                                                "\u003call_urls\u003e"
-                                            ],
-                                "js":  [
-                                           "content/content.js"
-                                       ],
-                                "css":  [
-                                            "content/content.css"
-                                        ],
-                                "run_at":  "document_idle",
-                                "all_frames":  false
-                            }
-                        ],
-    "web_accessible_resources":  [
-                                     {
-                                         "resources":  [
-                                                           "ui/*"
-                                                       ],
-                                         "matches":  [
-                                                         "\u003call_urls\u003e"
-                                                     ]
-                                     }
-                                 ]
+{
+  "manifest_version": 3,
+  "name": "LLM Float 悬浮助手",
+  "description": "悬浮球 AI 聊天助手（QwenPaw 直连，核心 UI 不依赖 Python）",
+  "version": "0.6.4",
+  "options_page": "options/options.html",
+  "permissions": ["storage", "tabs", "alarms", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "LLM Float",
+    "default_popup": "popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/ui.js", "content/drag.js", "content/tts.js", "content/asr.js", "content/bridge.js", "content/main.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["ui/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
