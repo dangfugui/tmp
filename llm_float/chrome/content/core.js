@@ -12,6 +12,10 @@ var CHAT = null;         // 兼容别名：聊天窗 iframe（features 直接引
 var BUBBLE = null;       // 兼容别名：字幕气泡 iframe（features 直接引用）
 var orbSize = 68;        // 可见圆直径（跟随设置 orb_size）
 var currentTheme = "flat";
+/* navigate 跳转沿用标记（启动时读 navigate_keep_profile 填入） */
+var keepProfileOnStart = "";
+/* 启动时读 navigate 沿用标记（一次性，读完即清） */
+try { chrome.storage.local.get("navigate_keep_profile", (d) => { keepProfileOnStart = d.navigate_keep_profile || ""; try { chrome.storage.local.set({ navigate_keep_profile: "" }); } catch (e) {} }); } catch (e) {}
 var uiState = {
   orb:    { enabled: true, state: "idle" },
   chat:   { open: false, busy: false },
@@ -143,9 +147,29 @@ function pushOrbSize() {
 }
 function pushProfiles() {
   try {
-    chrome.storage.local.get(["chat_profiles", "active_profile_name"], (d) => {
-      pushChat("setChatProfiles", { profiles: d.chat_profiles || [] });
-      pushChat("setActiveChatProfile", { profile: { chatName: d.active_profile_name || "" } });
+    chrome.storage.local.get(["chat_profiles"], (d) => {
+      const profiles = d.chat_profiles || [];
+      pushChat("setChatProfiles", { profiles });
+      let matched = null;
+      // 优先：navigate 跳转过来的，沿用之前的 agent（标记已在启动时读+清）
+      if (keepProfileOnStart) {
+        matched = profiles.find((p) => p.chatName === keepProfileOnStart);
+        keepProfileOnStart = "";
+      }
+      // 否则：根据当前页面 URL 匹配 profile
+      if (!matched) {
+        const url = location.href || "";
+        matched = profiles[0];
+        for (let i = 1; i < profiles.length; i++) {
+          const p = profiles[i] || {};
+          if (!p.urlRegex) continue;
+          try { if (new RegExp(p.urlRegex).test(url)) { matched = p; break; } } catch (e) { /* 非法正则跳过 */ }
+        }
+      }
+      if (matched) {
+        pushChat("setActiveChatProfile", { profile: { chatName: matched.chatName } });
+        try { chrome.storage.local.set({ active_profile_name: matched.chatName }); } catch (e) {}
+      }
     });
   } catch (e) { /* 忽略 */ }
 }

@@ -3,7 +3,7 @@ const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("send");
 const titlebarEl = document.getElementById("titlebar");
 
-const WELCOME = "你好，我是 AI 助手 👋\n输入消息即可开始对话（已接入 QwenPaw 聊天接口）。";
+const WELCOME = "你好，我是 AI 助手 👋\n输入消息即可开始对话。";
 
 
 let busy = false;
@@ -246,6 +246,10 @@ function makeMeta(getText) {
 }
 
 /* ---------- messages ---------- */
+let restoring = false; // 恢复历史时不重复存
+let currentProfileName = ""; // 当前 agent 名（历史按 agent 分 key）
+function historyKey() { return "chat_history_" + (currentProfileName || "default"); }
+
 function addMessage(role, text) {
   const msg = el("div", `msg ${role}`);
   const bubble = el("div", "bubble");
@@ -257,6 +261,17 @@ function addMessage(role, text) {
   msg.append(bubble, makeMeta(() => bubble.innerText));
   messagesEl.appendChild(msg);
   scrollToEnd();
+  // 持久化消息历史（按 agent 分 key，导航后自动恢复，最多 100 条）
+  if (!restoring && text) {
+    const key = historyKey();
+    try {
+      chrome.storage.local.get({ [key]: [] }, (d) => {
+        const h = (d[key] || []).slice(-99);
+        h.push({ role, text });
+        chrome.storage.local.set({ [key]: h });
+      });
+    } catch (e) { /* 忽略 */ }
+  }
 }
 
 
@@ -303,7 +318,19 @@ function stopSend() {
 function finishReply(error) {
   removeTyping();
   if (botEl && pendingBotText !== null) {
-    botEl.querySelector(".bubble").innerHTML = renderMarkdown(pendingBotText);
+    const finalText = pendingBotText;
+    botEl.querySelector(".bubble").innerHTML = renderMarkdown(finalText);
+    // 存 bot 最终文本到历史
+    if (finalText) {
+      const key = historyKey();
+      try {
+        chrome.storage.local.get({ [key]: [] }, (d) => {
+          const h = (d[key] || []).slice(-99);
+          h.push({ role: "bot", text: finalText });
+          chrome.storage.local.set({ [key]: h });
+        });
+      } catch (e) { /* 忽略 */ }
+    }
     pendingBotText = null;
   }
   botEl = null;
@@ -462,12 +489,193 @@ async function qwenChat(text) {
 }
 
 function abortChat() {
+  // 标准 OpenAI 停止 = abort 流式请求；已收到的文本保留，由 AbortError 回调的 finishReply() 渲染成最终气泡
   if (chatAbort) { try { chatAbort.abort(); } catch (e) { /* 忽略 */ } }
   removeTyping();
-  botEl = null;
-  pendingBotText = null;
   setBusy(false);
   inputEl.focus();
+}
+
+/* ================= LLM 模式（OpenAI 兼容 + 轻量 agent 工具） ================= */
+// 配置 mode='llm' 时启用（设置 → 聊天（网址匹配）→ 模式列）。
+// baseUrl 直接填完整接口地址（如 https://api.deepseek.com/chat/completions），不做拼接；
+// agentId 字段作模型名；token 作 OpenAI API Key。
+// 工具：page_* 扩展内执行（操作当前网页）；fs_* 走 File System Access 授权目录（免 Python）。
+// agent 循环：LLM 返回 tool_calls → 执行工具 → 结果回填 → 继续下一轮，直到纯文本回复。
+
+let llmMessages = [];
+let llmRound = 0;
+const MAX_TOOL_ROUNDS = 20;
+
+/* agent 工具已迁到 ui/agent.js */
+/* ---- 工具执行与气泡展示 ---- */
+function addToolMsg(icon, name, summary) {
+  const msg = el("div", "msg bot tool-msg");
+  const b = el("div", "bubble tool");
+  b.textContent = icon + " " + name + "  →  " + summary;
+  b.style.cursor = "pointer";
+  b.title = "点击展开/收起详情";
+  const detail = el("pre", "tool-detail");
+  detail.style.display = "none";
+  b.addEventListener("click", () => {
+    detail.style.display = detail.style.display === "none" ? "block" : "none";
+  });
+  msg.append(b, detail);
+  messagesEl.appendChild(msg);
+  scrollToEnd();
+  return msg;
+}
+
+const TOOL_ICONS = {
+  page_get_info: "🌐", page_read: "📖", page_exec_js: "⚡",
+  fs_read: "📂", fs_write: "✏️", fs_find: "🔍",
+  page_click: "👆", page_set_input: "⌨️", page_get_attr: "📋",
+  navigate: "🧭", page_scroll: "📜", page_hover: "🖱️",
+  page_wait: "⏳", page_get_html: "📄", page_select: "🎯",
+};
+
+async function dispatchTool(name, args) {
+  const fn = AGENT_TOOLS[name];
+  if (!fn) return { error: "unknown tool: " + name };
+  const msgEl = addToolMsg(TOOL_ICONS[name] || "🔧", name, "执行中…");
+  const r = await fn(args || {});
+  const icon = TOOL_ICONS[name] || "🔧";
+  let summary = "✅";
+  if (r.error) summary = "❌ " + r.error;
+  else if (r.content !== undefined) {
+    // 短结果直接显示内容，长的只显示长度
+    const short = r.content.length <= 80;
+    summary = short ? "✅ " + r.content.replace(/\s+/g, " ").trim().slice(0, 80) : "✅ " + r.content.length + " 字符";
+  }
+  else if (r.matches) summary = "✅ " + r.matches.length + " 个匹配" + (r.matches.length <= 5 ? "（" + r.matches.slice(0, 5).join("、") + "）" : "");
+  else if (r.written !== undefined) summary = "✅ 写入 " + r.written + " 字符";
+  else if (r.data && r.data.value !== undefined && String(r.data.value).length <= 80) summary = "✅ " + String(r.data.value).replace(/\s+/g, " ").trim().slice(0, 80);
+  else if (r.data && r.data.selected) summary = "✅ " + (r.data.text || r.data.selected);
+  else if (r.data && r.data.clicked) summary = "✅ " + (r.data.tag || "");
+  else if (r.data && r.data.set) summary = "✅ " + (r.data.tag || "");
+  else if (r.data && r.data.waited) summary = "✅ " + r.data.waited + "ms";
+  else if (r.data && r.data.scrolled) summary = "✅ " + r.data.scrolled;
+  const b = msgEl.querySelector(".bubble");
+  if (b) b.textContent = icon + " " + name + "  →  " + summary;
+  const detail = msgEl.querySelector(".tool-detail");
+  if (detail) {
+    const argsStr = Object.keys(args || {}).length ? JSON.stringify(args, null, 2) : "（无参数）";
+    const resultStr = JSON.stringify(r, null, 2);
+    detail.textContent = "▼ 参数\n" + argsStr + "\n\n▼ 结果\n" + resultStr;
+  }
+  scrollToEnd();
+  return r;
+}
+
+/* ---- OpenAI 兼容流式对话（含工具循环） ---- */
+function openaiChat(text) {
+  llmMessages.push({ role: "user", content: text });
+  llmRound = 0;
+  runLlmLoop();
+}
+
+async function runLlmLoop() {
+  while (true) {
+    if (++llmRound > MAX_TOOL_ROUNDS) { finishReply("工具调用轮数超限，已停止"); return; }
+    const next = await oneLlmCall();
+    if (!next) return;
+  }
+}
+
+async function oneLlmCall() {
+  await refreshProfileCache();
+  const cfg = currentProfile();
+  // 直接用设置里填的完整接口地址，不做任何拼接/猜测
+  const baseUrl = String(cfg.baseUrl || "").trim();
+  if (!baseUrl) { finishReply("LLM 模式：Base URL 未配置（请填完整接口地址，如 https://api.deepseek.com/chat/completions）"); return false; }
+  if (!cfg.token) { finishReply("LLM 模式：缺少 Token（OpenAI API Key）"); return false; }
+  const headers = { "Content-Type": "application/json", "Authorization": "Bearer " + cfg.token };
+  const body = {
+    model: cfg.agentId || "qwen-plus",
+    messages: llmMessages,
+    stream: true,
+    tools: AGENT_TOOL_DEFS,
+    tool_choice: "auto",
+  };
+  chatAbort = new AbortController();
+  try {
+    const resp = await fetch(baseUrl, {
+      method: "POST", headers, body: JSON.stringify(body), signal: chatAbort.signal,
+    });
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => "");
+      finishReply("LLM HTTP " + resp.status + ": " + t.slice(0, 200));
+      return false;
+    }
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    let accumulated = "";
+    const toolCalls = {}; // index -> {id, name, args}
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (payload === "[DONE]") { buf = ""; break; }
+        let ev;
+        try { ev = JSON.parse(payload); } catch (e) { continue; }
+        const delta = ev.choices && ev.choices[0] && ev.choices[0].delta;
+        if (!delta) continue;
+        if (delta.content) {
+          accumulated += delta.content;
+          window.assistant.onChatMessage({ role: "bot", text: accumulated, done: false });
+        }
+        if (delta.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const slot = toolCalls[tc.index] || (toolCalls[tc.index] = { id: "", name: "", args: "" });
+            if (tc.id) slot.id = tc.id;
+            if (tc.function) {
+              if (tc.function.name) slot.name += tc.function.name;
+              if (tc.function.arguments) slot.args += tc.function.arguments;
+            }
+          }
+        }
+      }
+    }
+    const calls = Object.keys(toolCalls).sort((a, b) => a - b).map((i) => toolCalls[i]).filter((t) => t.name);
+    if (calls.length) {
+      // 收尾当前文本为完整气泡，再进入工具执行（下一轮会新建气泡）
+      if (accumulated) window.assistant.onChatMessage({ role: "bot", text: accumulated, done: true });
+      else finishReply();
+      // assistant（含 tool_calls）入历史
+      llmMessages.push({
+        role: "assistant", content: accumulated || null,
+        tool_calls: calls.map((t) => ({ id: t.id || ("call_" + t.name), type: "function", function: { name: t.name, arguments: t.args || "{}" } })),
+      });
+      for (const t of calls) {
+        let args = {};
+        try { args = JSON.parse(t.args || "{}"); } catch (e) { args = {}; }
+        const result = await dispatchTool(t.name, args);
+        if (result && result.needAuth) {
+          // 未授权：停止 LLM 调用，只弹授权提示条，不把错误回给 LLM 继续跑
+          finishReply("⏸ 已暂停：需要授权工作目录。请点击聊天窗口底部的授权按钮，授权后重新发送消息。");
+          return false;
+        }
+        llmMessages.push({ role: "tool", tool_call_id: t.id || ("call_" + t.name), content: JSON.stringify(result).slice(0, 3000) });
+      }
+      return true; // 继续下一轮 LLM
+    }
+    // 纯文本回复：入历史并收尾
+    llmMessages.push({ role: "assistant", content: accumulated });
+    window.assistant.onChatMessage({ role: "bot", text: accumulated, done: true });
+    return false;
+  } catch (err) {
+    if (err && err.name === "AbortError") { finishReply(); return false; }
+    console.error("llm chat failed:", err);
+    finishReply("LLM 连接失败: " + err);
+    return false;
+  }
 }
 
 /* ---------- send flow ---------- */
@@ -482,8 +690,12 @@ function send() {
   setBusy(true);
   showTyping();
 
-  // Chrome 扩展：本地直连 QwenPaw（SSE 解析与 Python 版一致）
-  qwenChat(text);
+  // 分发前先刷新配置缓存（设置页保存后无需刷新页面即生效）
+  refreshProfileCache().then(() => {
+    // 模式分发：mode='llm' → OpenAI 兼容 + agent 工具；否则 QwenPaw（原有逻辑不变）
+    if (currentProfile().mode === 'llm') openaiChat(text);
+    else qwenChat(text);
+  });
 }
 
 /* ---------- Python 桥 / 控制台：外部发送与停止（方法名 = SDK 命令名） ---------- */
@@ -493,7 +705,10 @@ window.assistant.sendText = function (payload) {
   addMessage("user", text);
   setBusy(true);
   showTyping();
-  qwenChat(text);
+  refreshProfileCache().then(() => {
+    if (currentProfile().mode === 'llm') openaiChat(text);
+    else qwenChat(text);
+  });
 };
 window.assistant.stopChat = function () { stopSend(); };
 
@@ -560,11 +775,20 @@ window.assistant.setActiveChatProfile = function (payload) {
   if (name && Array.from(select.options).some((o) => o.value === name)) {
     select.value = name;
   }
+  // profile 变了：更新当前名 + 重载该 agent 的历史
+  if (name && name !== currentProfileName) {
+    currentProfileName = name;
+    llmMessages = [];
+    restoreHistory();
+  }
 };
 
 document.getElementById("chat-title").addEventListener("change", (e) => {
   const name = e.target.value;
   currentProfileCache = null; // 清缓存，下次发送前按名称重新拉取
+  llmMessages = []; // LLM 模式：切换配置即切换 agent，清空上下文
+  currentProfileName = name;
+  restoreHistory(); // 加载该 agent 的历史
   try { chrome.storage.local.set({ active_profile_name: name }); } catch (err) { /* 忽略 */ }
 });
 
@@ -587,9 +811,28 @@ document.getElementById("btn-close").addEventListener("click", () => callApi("hi
 document.getElementById("btn-min").addEventListener("click", () => callApi("hide_all"));
 document.getElementById("btn-clear").addEventListener("click", () => {
   messagesEl.innerHTML = "";
+  llmMessages = []; // LLM 模式：清空聊天同时清空对话上下文
+  try { chrome.storage.local.set({ [historyKey()]: [] }); } catch (e) {}
   addMessage("bot", WELCOME);
 });
 
 /* ---------- init ---------- */
-addMessage("bot", WELCOME);
+function restoreHistory() {
+  try {
+    chrome.storage.local.get(["active_profile_name"], (d) => {
+      if (!currentProfileName) currentProfileName = d.active_profile_name || "";
+      const key = historyKey();
+      chrome.storage.local.get({ [key]: [] }, (d2) => {
+        const h = d2[key] || [];
+        messagesEl.innerHTML = "";
+        if (h.length === 0) { addMessage("bot", WELCOME); return; }
+        restoring = true;
+        h.forEach((m) => addMessage(m.role, m.text));
+        restoring = false;
+        scrollToEnd();
+      });
+    });
+  } catch (e) { addMessage("bot", WELCOME); }
+}
+restoreHistory();
 inputEl.focus();

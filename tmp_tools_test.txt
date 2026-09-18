@@ -1,0 +1,2 @@
+tools smoke test
+fs_write ok

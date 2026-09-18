@@ -8,7 +8,7 @@
 chrome/
 ├─ manifest.json            # MV3 清单 v0.6.32（<all_urls> 内网自用）
 ├─ background.js            # 全局配置 / URL 匹配 / 总开关广播 / demo 路由 + Python 桥客户端（WS 自动重连 + alarm 保活）
-├─ design_preview.html      # 10 组悬浮球风格预览页（设置 → 主题 → 「预览主题」按钮打开）
+├─ design_preview.html      # 11 组悬浮球风格预览页（设置 → 主题 → 「预览主题」按钮打开）
 ├─ design-preview.js        # 预览页渲染脚本（外部化以通过 MV3 CSP）
 ├─ popup/                   # 工具栏图标弹窗菜单：开关本插件 / TTS demo / ASR demo
 ├─ content/                 # 内容脚本（方案③：内核 + 功能单元，按 manifest 顺序注入，共享 isolated world）
@@ -21,9 +21,9 @@ chrome/
 ├─ ui/                      # 三个 iframe 页面 + 统一主题
 │  ├─ common.js             # 三页面公共：assistant 消息分发 + 默认主题 + 兜底读 storage 主题
 │  ├─ button.html/css/js    # 悬浮球（四态 idle/chat/tts/asr）：单击开聊天 / 右键 ASR / 左键拖动
-│  ├─ chat.html/css/js      # 聊天窗：QwenPaw SSE 直连（AbortController 停止）+ Markdown 渲染
+│  ├─ chat.html/css/js      # 聊天窗：QwenPaw SSE 直连 或 LLM 模式（OpenAI 兼容 + agent 工具循环），AbortController 停止，Markdown 渲染
 │  ├─ bubble.html/css/js    # 字幕气泡：TTS 字幕（扫入动画）/ ASR 识别
-│  └─ theme.css             # 10 主题（G1~G10，与预览页一一对应）+ dark/blue/light 兼容保留
+│  └─ theme.css             # 11 主题（G1~G11，与预览页一一对应）+ dark/blue/light 兼容保留
 ├─ options/                 # 设置页：基础 / 聊天（网址匹配）/ 字幕（TTS）/ 识别（ASR）/ 未启用（默认折叠）
 └─ PYTHON-SDK.md            # Python SDK 完整文档
 ```
@@ -37,9 +37,9 @@ py-sdk/
 └─ PYTHON-SDK.md     # SDK 使用文档
 ```
 
-## 主题（10 组，与预览页一一对应）
+## 主题（11 组，与预览页一一对应）
 
-设置 → 主题下拉可切换 10 组主题；下拉旁「预览主题」按钮新开标签页打开 `design_preview.html` 对比效果。
+设置 → 主题下拉可切换 11 组主题；下拉旁「预览主题」按钮新开标签页打开 `design_preview.html` 对比效果。
 
 | 主题 key | 名称 | 预览页编号 |
 |---|---|---|
@@ -148,12 +148,31 @@ registerPanelMessage("note", (kind, data) => {
 |---|---|
 | `chatName` | 配置名称（聊天页标题下拉框显示） |
 | `urlRegex` | 网址匹配正则（`new RegExp().test(url)`，第一条配置不填则默认兜底） |
-| `baseUrl` | QwenPaw 服务根地址（如 `http://localhost:8088`） |
-| `agentId` | Agent ID |
+| `baseUrl` | QwenPaw 服务根地址（如 `http://localhost:8088`）；**LLM 模式**直接填完整接口地址（如 `https://api.deepseek.com/chat/completions`），不做拼接 |
+| `agentId` | QwenPaw 的 Agent ID；**LLM 模式**下作模型名（如 `qwen-plus`） |
 | `ttsTarget` | TTS 定位：网页元素 **id 或 CSS 选择器**（如 `chat-content`、`.msg`、`#sug li:first-child`），该元素新增文本 → 自动朗读 + 字幕 |
-| `token` | QwenPaw Web 认证 Bearer token（本地可留空） |
+| `token` | QwenPaw Web 认证 Bearer token（本地可留空）；**LLM 模式**下为 OpenAI API Key（必填） |
+| `mode` | **`qwenpaw`（默认）** / `llm`——两种接入并列二选一，按域名匹配到的配置决定聊天窗走哪套协议 |
 
-会话标记 `QWENPAW_SESSION_ID` 自动取**本机 IP**，无需手动配置。
+会话标记 `QWENPAW_SESSION_ID` 自动取**本机 IP**，无需手动配置（仅 QwenPaw 模式）。
+
+## LLM 模式（轻量 Agent，mode='llm'）
+
+配置模式列选「LLM(Agent)」后，该域名下聊天窗走 **OpenAI 兼容接口**（`{baseUrl}/chat/completions`，流式 + function calling），并启用内置工具循环：
+
+| 工具 | 能力 | 执行方 |
+|---|---|---|
+| `page_get_info` | 当前网页 URL / 标题 / 文本摘要 | 扩展内（content） |
+| `page_read` | 按 CSS 选择器读取页面元素文本 | 扩展内（content） |
+| `page_exec_js` | 在当前网页执行 JS（点击/填表/读取） | 扩展内（content） |
+| `fs_read` | 读已授权工作目录内文件 | 扩展内（File System Access，**免 Python**） |
+| `fs_write` | 写已授权工作目录内文件 | 同上 |
+| `fs_find` | 在授权目录内递归查找（glob） | 同上 |
+
+- **授权目录**：设置 → 基础 → Agent 工作目录 →「选择目录」（首次需手动选一次，句柄存 IndexedDB 持久化；授权失效时到设置页重选）。文件工具只能访问该目录树，不能任意路径
+- **工具循环**：LLM 返回 tool_calls → 执行 → 结果回填 → 继续，最多 8 轮；工具执行过程显示「🔧」气泡
+- **无 Python 依赖**：一期全部工具纯浏览器实现；`shell.exec`（执行命令行）仍需 Python 桥，二期接入
+- 消息历史：LLM 模式前端维护 `messages` 数组（切换配置即清空，避免不同 agent 串上下文）
 
 ## Python SDK
 
@@ -183,7 +202,7 @@ await sdk.getConfig()            # 读取设置页全部参数
 - **悬浮球**：左键拖动；**单击 → 聊天窗**；**右键 → 开始语音识别（ASR）**
 - **工具栏图标**：单击弹出菜单——① 开关本插件 ② TTS demo ③ ASR demo
 - **聊天窗**：标题下拉框手动切换配置（下次按网址自动重新匹配）；等待回复时按钮变「停止」；流式回复 Markdown 渲染
-- **设置页**：主题（10 组 + 预览按钮）/ 大小 / 透明度 / 聊天配置表格（6 字段）/ TTS 接口配置 / ASR 接口配置；「未启用」分组默认折叠。入口：`chrome://extensions` → LLM Float → 详情 → 扩展程序选项
+- **设置页**：主题（11 组 + 预览按钮）/ 大小 / 透明度 / Agent 工作目录（授权目录）/ 聊天配置表格（7 字段，含模式）/ TTS 接口配置 / ASR 接口配置；「未启用」分组默认折叠。入口：`chrome://extensions` → LLM Float → 详情 → 扩展程序选项
 - **TTS 定位**：配置表填网页元素 id 或 CSS 选择器（如 `#normalSugSearchUl li:first-child`），该元素新增文本自动朗读并显示字幕
 
 ## 打包（内网分发）

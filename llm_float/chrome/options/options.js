@@ -8,13 +8,14 @@ const STORAGE_SCHEMA = [
       { key: 'orb_opacity', label: '悬浮球透明度', type: 'number', value: 1.0, min: 0.2, max: 1.0, step: 0.05 },
       { key: 'theme', label: '主题', type: 'select', value: 'glass', options: [['glass', '液态玻璃'], ['flat', '极简扁平'], ['neon', '霓虹赛博'], ['macaron', '马卡龙奶油'], ['metal', '金属质感'], ['candy', '活力糖果'], ['morandi', '莫兰迪雅致'], ['synthwave', '复古合成波'], ['green', '自然绿意'], ['mono', '黑白极简'], ['brand', '品牌蓝']] },
       { key: 'orb_size', label: '悬浮球大小', type: 'number', value: 68, min: 40, max: 96, step: 1 },
+      { key: 'agent_workdir', label: 'Agent 工作目录', type: 'agent_workdir', value: '' },
     ],
   },
   {
     section: '聊天（网址匹配）',
     items: [
       { key: 'chat_profiles', label: '', type: 'chat_profiles', value: [
-        { chatName: '默认', urlRegex: '.*', baseUrl: 'http://localhost:8088', agentId: 'default', ttsTarget: '', token: '' },
+        { chatName: '默认', urlRegex: '.*', baseUrl: 'http://localhost:8088', agentId: 'default', ttsTarget: '', token: '', mode: 'qwenpaw' },
       ] },
     ],
   },
@@ -98,6 +99,45 @@ function showToast(msg, timeout = 1600) {
   showToast.timer = setTimeout(() => toast.classList.remove('show'), timeout);
 }
 
+/* Agent 工作目录句柄持久化：FileSystemHandle 不能存 chrome.storage（非 JSON），走 IndexedDB（扩展页同 origin 共享） */
+const AGENT_IDB = 'llm-float';
+function idbGet(key) {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(AGENT_IDB, 1);
+      req.onupgradeneeded = () => { try { req.result.createObjectStore('handles'); } catch (e) {} };
+      req.onsuccess = () => {
+        const db = req.result;
+        try {
+          const tx = db.transaction('handles', 'readonly');
+          const get = tx.objectStore('handles').get(key);
+          get.onsuccess = () => resolve(get.result || null);
+          get.onerror = () => resolve(null);
+        } catch (e) { resolve(null); }
+      };
+      req.onerror = () => resolve(null);
+    } catch (e) { resolve(null); }
+  });
+}
+function idbSet(key, val) {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(AGENT_IDB, 1);
+      req.onupgradeneeded = () => { try { req.result.createObjectStore('handles'); } catch (e) {} };
+      req.onsuccess = () => {
+        const db = req.result;
+        try {
+          const tx = db.transaction('handles', 'readwrite');
+          tx.objectStore('handles').put(val, key);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) { resolve(false); }
+      };
+      req.onerror = () => resolve(false);
+    } catch (e) { resolve(false); }
+  });
+}
+
 /* 旧版主题名兼容：dark/blue/light 已从 10 组主题中移除，映射到 flat */
 function normalizeTheme(t) {
   return (t === 'dark' || t === 'blue' || t === 'light') ? 'flat' : (t || 'flat');
@@ -120,6 +160,16 @@ function buildProfileRow(p) {
     ['ttsTarget', '元素 id 或 CSS 选择器', p.ttsTarget || ''],
     ['token', 'Token', p.token || ''],
   ];
+  const modeTd = document.createElement('td');
+  const modeSel = document.createElement('select');
+  modeSel.dataset.pk = 'mode';
+  [['qwenpaw', 'QwenPaw'], ['llm', 'LLM(Agent)']].forEach(([v, l]) => {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = l;
+    modeSel.appendChild(opt);
+  });
+  modeSel.value = p.mode || 'qwenpaw';
+  modeTd.appendChild(modeSel);
   fields.forEach(([pk, ph, val]) => {
     const td = document.createElement('td');
     const input = document.createElement('input');
@@ -130,6 +180,7 @@ function buildProfileRow(p) {
     td.appendChild(input);
     row.appendChild(td);
   });
+  row.appendChild(modeTd);
   const tdOp = document.createElement('td');
   tdOp.className = 'profile-op';
   const del = document.createElement('button');
@@ -187,7 +238,7 @@ function prepareField(item) {
       preview.type = 'button';
       preview.className = 'theme-preview-btn';
       preview.textContent = '预览主题';
-      preview.title = '打开 10 组悬浮球风格预览页';
+      preview.title = '打开 11 组悬浮球风格预览页';
       preview.addEventListener('click', () => {
         try { chrome.tabs.create({ url: chrome.runtime.getURL('design_preview.html') }); } catch (e) { /* 忽略 */ }
       });
@@ -207,6 +258,28 @@ function prepareField(item) {
     input.value = item.value ?? '';
     input.dataset.key = item.key;
     controlWrap.appendChild(input);
+  } else if (item.type === 'agent_workdir') {
+    const wrap = document.createElement('div');
+    wrap.className = 'workdir';
+    const info = document.createElement('input');
+    info.type = 'text';
+    info.readOnly = true;
+    info.placeholder = '未授权（agent 文件工具不可用，选目录后免 Python 读写该目录树）';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'workdir-pick';
+    btn.textContent = '选择目录';
+    btn.addEventListener('click', async () => {
+      try {
+        const h = await window.showDirectoryPicker({ mode: 'readwrite' });
+        await idbSet('agent_workdir', h);
+        info.value = h.name;
+        showToast('已授权工作目录：' + h.name);
+      } catch (e) { /* 用户取消 */ }
+    });
+    wrap.append(info, btn);
+    controlWrap.appendChild(wrap);
+    idbGet('agent_workdir').then((h) => { if (h) info.value = h.name; });
   } else if (item.type === 'chat_profiles') {
     const wrap = document.createElement('div');
     wrap.className = 'profiles';
@@ -214,7 +287,7 @@ function prepareField(item) {
     const table = document.createElement('table');
     table.className = 'profile-table';
     table.innerHTML = '<thead><tr>' +
-      '<th>名称</th><th>网址正则</th><th>Base URL</th><th>Agent ID</th><th>TTS定位</th><th>Token</th><th class="profile-op"></th>' +
+      '<th>名称</th><th>网址正则</th><th>Base URL</th><th>Agent ID</th><th>TTS定位</th><th>Token</th><th>模式</th><th class="profile-op"></th>' +
       '</tr></thead>';
     const tbody = document.createElement('tbody');
     tbody.className = 'profile-rows';
@@ -321,7 +394,7 @@ function readFormValues() {
     if (field.type === 'chat_profiles') {
       val = Array.from(node.querySelectorAll('.profile-row')).map((row) => {
         const obj = {};
-        row.querySelectorAll('input[data-pk]').forEach((inp) => { obj[inp.dataset.pk] = inp.value.trim(); });
+        row.querySelectorAll('input[data-pk], select[data-pk]').forEach((inp) => { obj[inp.dataset.pk] = inp.value.trim(); });
         return obj;
       }).filter((o) => o.chatName || o.urlRegex || o.baseUrl || o.agentId || o.ttsTarget || o.token);
     } else {

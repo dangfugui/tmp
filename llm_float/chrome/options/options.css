@@ -402,3 +402,17 @@ body {
 }
 .theme-preview-btn:hover { filter: brightness(1.12); }
 .theme-preview-btn:active { transform: scale(.97); }
+
+/* Agent 工作目录 */
+.workdir { display: flex; gap: 8px; align-items: center; }
+.workdir input { flex: 1 1 auto; }
+.workdir-pick {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border: 1px solid var(--divider);
+  border-radius: 9px;
+  background: var(--bg-glass-strong);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.workdir-pick:hover { border-color: var(--accent); }

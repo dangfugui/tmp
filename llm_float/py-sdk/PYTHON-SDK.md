@@ -104,8 +104,8 @@ SDK 协议**不是另一套命名**，而是 JS 现有代码的**直接映射**�
 | `showChat`             | `{ "send": "你好" }`（可选）                    | `content.showChat()`；`send` 非空 → `chat.sendText(text)`                                         |
 | `hideChat`             | `{}`                                      | `content.hideChat()`                                                                           |
 | `hideAll`              | `{}`                                      | 一键收起全部弹窗（聊天窗/字幕气泡/识别气泡），只留悬浮球                                                   |
-| `sendText`             | `{ "text": "你好" }`                        | `chat.sendText(text)`（新增：显示用户气泡 + `qwenChat`）                                                  |
-| `stopChat`             | `{}`                                      | `chat.stopChat()`（新增：等效 `stopSend()`/AbortController）                                          |
+| `sendText`             | `{ "text": "你好" }`                        | `chat.sendText(text)`（显示用户气泡，按配置 `mode` 分发 `qwenChat` / `openaiChat`）                  |
+| `stopChat`             | `{}`                                      | `chat.stopChat()`（等效 `stopSend()`/AbortController；LLM 模式同样中断）                          |
 | `setActiveChatProfile` | `{ "name": "Qwen" }`                      | 消息 `llm_manual_profile` / `assistant.setActiveChatProfile`                                     |
 | `speakText`            | `{ "text": "..." }`                       | `content.speakText(text)`                                                                      |
 | `stopSpeak`            | `{}`                                      | `content.stopContentTts()` + `hideBubble()`                                                    |
@@ -123,7 +123,9 @@ SDK 协议**不是另一套命名**，而是 JS 现有代码的**直接映射**�
 | `ping`                 | `{}`                                      | 保活 / 连通性检查
 | `getTabs`             | `{}`                                      | 列出全部可注入页面（http/https）`[{id,title,url}]`，供多页面演示遍历                                                                                     |
 
-**主题列表**（`setTheme` / `setConfig` 的 `theme` 可选值，与设置页下拉及预览页 G1~G10 一一对应）：
+**LLM 模式（mode='llm'）说明**：聊天配置表新增 `mode` 字段（`qwenpaw` / `llm` 二选一，模式由配置显式声明、不再嗅探 URL）。`llm` 模式下聊天窗直接请求设置里填的完整接口地址（OpenAI 兼容，`agentId` 作模型名、`token` 作 API Key，流式 + function calling），并启用 agent 工具循环（`page_get_info` / `page_read` / `page_exec_js` 操作当前网页，`fs_read` / `fs_write` / `fs_find` 读写**授权目录**——File System Access API，纯浏览器、**无需 Python**）。授权目录在设置页「基础 → Agent 工作目录」选择，句柄存 IndexedDB（扩展页共享），与 Python 桥无关。
+
+**主题列表**（`setTheme` / `setConfig` 的 `theme` 可选值，与设置页下拉及预览页 G1~G11 一一对应）：
 
 | theme | 名称 | | theme | 名称 |
 |---|---|---|---|---|

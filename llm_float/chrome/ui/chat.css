@@ -169,6 +169,40 @@ body { padding: 0; }
 
 
 
+/* ---------- agent 工具消息 ---------- */
+.msg.tool-msg { max-width: 100%; }
+.bubble.tool {
+  width: 100%;
+  font-family: "Cascadia Mono", "Consolas", "DejaVu Sans Mono", "Noto Sans Mono CJK SC", monospace;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  background: var(--chip-bg);
+  border: 1px solid var(--divider);
+  cursor: pointer;
+}
+.tool-detail {
+  width: 100%;
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  font-family: "Cascadia Mono", "Consolas", "DejaVu Sans Mono", "Noto Sans Mono CJK SC", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--bg, rgba(0,0,0,.04));
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 240px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.tool-detail .detail-label {
+  font-weight: 600;
+  color: var(--text, #333);
+  margin-bottom: 2px;
+}
+
 /* ---------- typing ---------- */
 .bubble.typing {
   display: inline-flex;

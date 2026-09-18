@@ -6,7 +6,7 @@ const DEFAULTS = {
   orb_opacity: 1.0,
   orb_enabled: true, // 悬浮助手总开关（工具栏 popup 切换）；新开页面默认开启
   chat_profiles: [
-    { chatName: "默认", urlRegex: ".*", baseUrl: "http://localhost:8088", agentId: "default", ttsTarget: "", token: "" }
+    { chatName: "默认", urlRegex: ".*", baseUrl: "http://localhost:8088", agentId: "default", ttsTarget: "", token: "", mode: "qwenpaw" }
   ]
 };
 
@@ -127,6 +127,68 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         safeTabSend(tabs && tabs[0], { type: "llm_demo", demo: msg.demo || "tts" });
         sendResponse({ ok: true });
       });
+      return true;
+    }
+    case "llm_bridge": {
+      // chat iframe 的 LLM agent 工具命令（page_* 等）：转发到当前活动页 content（main.js llm_bridge → callCommand）
+      (async () => {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const tab = tabs && tabs[0];
+        if (!tab || !/^https?:/i.test(tab.url || "")) {
+          sendResponse({ ok: false, error: "no http(s) target tab" });
+          return;
+        }
+        if (msg.cmd === "execJs") {
+          // chrome.scripting 在隔离世界执行；func 内部 try/catch，无论 eval 成功或被页面 CSP 拦截都明确返回
+          try {
+            const out = await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              args: [(msg.params && msg.params.code) || ""],
+              func: (codeStr) => {
+                try {
+                  const v = (0, eval)(codeStr);
+                  if (v === undefined || v === null) return { ok: true, value: String(v) };
+                  try { return { ok: true, value: JSON.parse(JSON.stringify(v)) }; }
+                  catch (e2) { return { ok: true, value: String(v) }; }
+                } catch (e) {
+                  const msg = String((e && e.message) || e);
+                  const csp = /Content Security Policy|unsafe-eval|eval.*is not allowed|Refused to evaluate/i.test(msg);
+                  return { ok: false, error: csp
+                    ? "该页面 CSP 禁止执行动态 JS（unsafe-eval 被禁用）。请改用 page_read / page_get_info 等不依赖 eval 的工具"
+                    : "execJs 运行错误: " + msg };
+                }
+              }
+            });
+            const r = out && out[0] && out[0].result;
+            if (!r) { sendResponse({ ok: false, error: "execJs 未返回结果" }); return; }
+            if (r.ok) sendResponse({ ok: true, data: { result: r.value } });
+            else sendResponse({ ok: false, error: r.error });
+          } catch (e) {
+            sendResponse({ ok: false, error: "execJs 注入失败: " + String((e && e.message) || e) });
+          }
+          return;
+        }
+        if (msg.cmd === "navigate") {
+          // 当前标签页导航到新 URL（不切标签页，悬浮窗自动重新注入）
+          try {
+            const url = (msg.params && msg.params.url) || "";
+            if (!/^https?:/i.test(url)) { sendResponse({ ok: false, error: "url 需以 http/https 开头" }); return; }
+            // navigate 前记住当前 profile，新页面沿用同一 agent（不根据新 URL 切换）
+            try {
+              const got = await chrome.storage.local.get("active_profile_name");
+              await chrome.storage.local.set({ navigate_keep_profile: got.active_profile_name || "" });
+            } catch (e) {}
+            await chrome.tabs.update(tab.id, { url });
+            sendResponse({ ok: true, data: { navigated: url } });
+          } catch (e) {
+            sendResponse({ ok: false, error: "navigate 失败: " + String((e && e.message) || e) });
+          }
+          return;
+        }
+        chrome.tabs.sendMessage(tab.id, { type: "llm_bridge", cmd: msg.cmd, params: msg.params || {} }, (resp) => {
+          sendResponse(resp || { ok: false, error: "content no response" });
+        });
+      })();
       return true;
     }
     case "llm_bridge_event": {

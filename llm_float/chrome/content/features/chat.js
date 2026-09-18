@@ -5,9 +5,16 @@ registerPanel({
   cls: "llm-float-chat-frame", exclusive: true,
   init: { right: (MARGIN + ORB_WIN) + "px", bottom: (MARGIN + ORB_WIN + 12) + "px", left: "auto", top: "auto" },
   onLoad: () => { pushThemeAll(); pushProfiles(); },
-  onOpen: () => { pushChat("onChatFocus", {}); setUi({ chat: { open: true, busy: false } }); reportToBridge("chatOpened", {}); },
-  onClose: () => { setUi({ chat: { open: false, busy: false } }); reportToBridge("chatClosed", {}); },
+  onOpen: () => { pushChat("onChatFocus", {}); setUi({ chat: { open: true, busy: false } }); reportToBridge("chatOpened", {}); try { chrome.storage.local.set({ chat_open: true }); } catch (e) {} },
+  onClose: () => { setUi({ chat: { open: false, busy: false } }); reportToBridge("chatClosed", {}); try { chrome.storage.local.set({ chat_open: false }); } catch (e) {} },
 });
+
+/* 导航后自动恢复 chat 窗口（页面刷新后 content 重新注入） */
+try {
+  chrome.storage.local.get({ chat_open: false }, (d) => {
+    if (d.chat_open) openPanel("chat");
+  });
+} catch (e) { /* 忽略 */ }
 
 registerCommand("showChat", (p) => {
   openPanel("chat");
@@ -19,7 +26,6 @@ registerCommand("sendText", (p) => { pushChat("sendText", { text: p && p.text })
 registerCommand("stopChat", () => { pushChat("stopChat", {}); return { ok: true }; });
 
 registerPanelMessage("chat", (kind, data) => {
-  if (data.action === "drag_start") startMaskDrag(PANEL_FRAMES.chat);
-  else if (data.action === "hide") { closePanel("chat"); pushOrbState("idle"); }
+  if (data.action === "hide") { closePanel("chat"); pushOrbState("idle"); }
   else if (data.action === "chat_busy") setUi({ chat: { open: true, busy: !!data.busy } });
 });
