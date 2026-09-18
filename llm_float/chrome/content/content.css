@@ -52,3 +52,8 @@
 .llm-float-bubble-frame.show {
   display: block;
 }
+
+/* 悬浮助手总开关关闭时：隐藏全部悬浮 UI（悬浮球/聊天窗/字幕气泡） */
+.llm-float-disabled {
+  display: none !important;
+}

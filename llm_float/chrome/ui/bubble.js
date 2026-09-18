@@ -160,7 +160,15 @@ window.assistant = {
   onAsrState,
   onAsrPartial,
   onAsrFinal,
+  stopDemo() {
+    // 互斥时调用：停止正在播放的 TTS 与正在识别的 ASR
+    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { /* 忽略 */ }
+    if (recognition) { try { recognition.stop(); } catch (e) { /* 忽略 */ } recognition = null; }
+  },
   runDemo(payload) {
+    // 切换 demo 前先停旧的，保证 TTS / ASR 互斥
+    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { /* 忽略 */ }
+    if (recognition) { try { recognition.stop(); } catch (e) { /* 忽略 */ } recognition = null; }
     if (payload && payload.type === 'tts') {
       runTtsDemo(payload.text || '这是一段语音播报演示，用于展示字幕气泡效果。欢迎使用悬浮助手。');
     } else if (payload && payload.type === 'asr') {

@@ -50,8 +50,138 @@
   function pushChat(name, payload) { post(CHAT, { kind: "assistant", name, payload }); }
   function pushBubble(name, payload) { post(BUBBLE, { kind: "assistant", name, payload }); }
 
-  function showBubble() { BUBBLE.classList.add("show"); }
-  function hideBubble() { BUBBLE.classList.remove("show"); }
+  // ---------- 弹窗跟随悬浮球定位 ----------
+  // 锚定的是【可见的圆】（圆在 120×120 iframe 内居中，不是透明外框），
+  // 否则弹窗会贴在透明框边缘，视觉上离圆有一截"隐形距离"。
+  // mode "top-left"：聊天窗 → 右下角贴圆的左上角（左不够放右侧，上不够放下方）
+  // mode "left"   ：字幕气泡 → 右侧贴圆的左侧、垂直居中（左不够放右侧）
+  let orbSize = 68; // 可见圆直径（跟随设置 orb_size）
+  function placePanel(frame, w, h, mode) {
+    const r = ORB.getBoundingClientRect();
+    const inset = Math.max(0, (r.width - orbSize) / 2); // 圆在 iframe 内的内边距
+    const cx = r.left + inset;   // 圆左上角 x
+    const cy = r.top + inset;    // 圆左上角 y
+    const gap = mode === "left" ? 10 : 0; // 气泡留 10px 呼吸感；聊天窗零间距
+    let left, top;
+    if (mode === "left") {
+      left = cx - w - gap;
+      top = Math.round(cy + orbSize / 2 - h / 2);
+      if (left < 8) left = (r.right - inset) + gap; // 左侧放不下 → 球右侧
+    } else {
+      left = cx - w - gap;
+      top = cy - h - gap;
+      if (left < 8) left = (r.right - inset) + gap; // 左边不够 → 球右侧
+      if (top < 8) top = cy + orbSize + gap;        // 上方不够 → 球下方
+    }
+    top = Math.min(Math.max(8, top), window.innerHeight - h - 8);
+    left = Math.min(Math.max(8, left), window.innerWidth - w - 8);
+    frame.style.left = left + "px";
+    frame.style.top = top + "px";
+    frame.style.right = "auto";
+    frame.style.bottom = "auto";
+  }
+
+  function showBubble() {
+    hideChat(); // 互斥：打开字幕气泡先关聊天窗
+    BUBBLE.classList.add("show");
+    placePanel(BUBBLE, 420, 96, "left"); // 正左方、垂直居中
+  }
+  function hideBubble() {
+    BUBBLE.classList.remove("show");
+    stopContentTts();
+    stopAsr();
+    pushBubble("stopDemo", {}); // 停止气泡内正在播放的 TTS / 正在识别的 ASR
+  }
+  function stopContentTts() {
+    try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) { /* 忽略 */ }
+  }
+
+  // ---------- ASR（真实识别在页面顶层 content script 执行；iframe 内 SpeechRecognition 不可用） ----------
+  let asrRecognition = null;
+  let asrMockTimer = null;
+  // DEMO 用模拟识别过程：不依赖麦克风/网络（内网环境真实识别不可用时也能展示效果）
+  function startAsrMock() {
+    stopAsr();
+    pushBubble("setMode", { mode: "asr" });
+    pushBubble("onAsrState", { state: "listening" });
+    const full = "大家好，这是语音识别演示，正在模拟实时转写的过程，欢迎体验。";
+    let n = 0;
+    const step = () => {
+      n += 2;
+      if (n >= full.length) {
+        if (asrMockTimer) clearInterval(asrMockTimer);
+        asrMockTimer = null;
+        pushBubble("onAsrFinal", { text: full });
+        pushBubble("onAsrState", { state: "idle" });
+        if (!CHAT.classList.contains("show")) pushOrb("setOrbState", { state: "idle" });
+        return;
+      }
+      pushBubble("onAsrPartial", { text: full.slice(0, n) });
+    };
+    asrMockTimer = setInterval(step, 180);
+  }
+  function startAsr() {
+    stopAsr();
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      pushBubble("setMode", { mode: "asr" });
+      pushBubble("onAsrState", { state: "idle" });
+      pushBubble("onAsrPartial", { text: "当前浏览器不支持语音识别" });
+      return;
+    }
+    pushBubble("setMode", { mode: "asr" });
+    pushBubble("onAsrState", { state: "listening" });
+    pushBubble("onAsrPartial", { text: "聆听中…" });
+    let rec;
+    try {
+      rec = new SR();
+    } catch (e) {
+      pushBubble("onAsrState", { state: "idle" });
+      pushBubble("onAsrPartial", { text: "无法启动识别：" + (e && e.message ? e.message : String(e)) });
+      return;
+    }
+    asrRecognition = rec;
+    rec.lang = "zh-CN";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (ev) => {
+      let interim = "", final = "";
+      for (let i = 0; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        if (r.isFinal) final += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      if (final) pushBubble("onAsrFinal", { text: final });
+      else if (interim) pushBubble("onAsrPartial", { text: interim });
+    };
+    rec.onend = () => {
+      asrRecognition = null;
+      pushBubble("onAsrState", { state: "idle" });
+      if (!CHAT.classList.contains("show")) pushOrb("setOrbState", { state: "idle" });
+    };
+    rec.onerror = (ev) => {
+      pushBubble("onAsrState", { state: "idle" });
+      if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
+        pushBubble("onAsrPartial", { text: "麦克风权限被拒绝，请在地址栏允许麦克风后重试" });
+      } else if (ev.error === "no-speech") {
+        pushBubble("onAsrPartial", { text: "未检测到语音" });
+      } else if (ev.error) {
+        pushBubble("onAsrPartial", { text: "识别出错：" + ev.error });
+      }
+    };
+    try { rec.start(); } catch (e) {
+      asrRecognition = null;
+      pushBubble("onAsrState", { state: "idle" });
+      pushBubble("onAsrPartial", { text: "无法启动识别：" + (e && e.message ? e.message : String(e)) });
+    }
+  }
+  function stopAsr() {
+    if (asrMockTimer) { clearInterval(asrMockTimer); asrMockTimer = null; }
+    if (asrRecognition) {
+      try { asrRecognition.stop(); } catch (e) { /* 忽略 */ }
+      asrRecognition = null;
+    }
+  }
 
   // 当前主题（所有 iframe 共用），供推送与 ttsTarget 字幕使用
   let currentTheme = "flat";
@@ -62,7 +192,10 @@
   }
   function pushOrbSize() {
     try {
-      chrome.storage.local.get(["orb_size"], (d) => pushOrb("setOrbSize", { size: d.orb_size || 68 }));
+      chrome.storage.local.get(["orb_size"], (d) => {
+        orbSize = d.orb_size || 68;
+        pushOrb("setOrbSize", { size: orbSize });
+      });
     } catch (e) { /* 忽略 */ }
   }
   function pushProfiles() {
@@ -79,14 +212,25 @@
   BUBBLE.addEventListener("load", () => { pushThemeAll(); });
 
   // ---------- 初始化：拉全局配置并推给 iframe ----------
+  let orbEnabled = true; // 悬浮助手总开关（默认开启）
+  function setEnabled(enabled) {
+    orbEnabled = !!enabled;
+    ORB.classList.toggle("llm-float-disabled", !orbEnabled);
+    CHAT.classList.toggle("llm-float-disabled", !orbEnabled);
+    BUBBLE.classList.toggle("llm-float-disabled", !orbEnabled);
+    if (!orbEnabled) { hideChat(); hideBubble(); }
+  }
   try {
     chrome.runtime.sendMessage({ type: "llm_init" }, (resp) => {
+      if (chrome.runtime.lastError) return;
       const d = (resp && resp.data) || {};
       currentTheme = d.theme || "flat";
       pushThemeAll();
-      pushOrb("setOrbSize", { size: d.orb_size || 68 });
+      orbSize = d.orb_size || 68;
+      pushOrb("setOrbSize", { size: orbSize });
       pushChat("setChatProfiles", { profiles: d.chat_profiles || [] });
       pushChat("setActiveChatProfile", { profile: { chatName: d.active_profile_name || "" } });
+      setEnabled(d.orb_enabled !== false);
       startTtsTarget();
     });
   } catch (e) { /* 忽略 */ }
@@ -95,26 +239,96 @@
   window.addEventListener("message", (e) => {
     const data = e.data || {};
     if (data.kind === "orb") {
-      if (data.action === "drag_start") startDrag(ORB);
-      else if (data.action === "open_chat") { showChat(); pushOrb("setOrbState", { state: "chat" }); }
-      else if (data.action === "open_settings") {
-        pushOrb("setOrbState", { state: "settings" });
-        try { chrome.runtime.sendMessage({ type: "llm_open_options" }); } catch (err) { /* 忽略 */ }
+      if (data.action === "drag_move") moveDrag(data.x, data.y);
+      else if (data.action === "drag_end") endDrag();
+      else if (data.action === "open_chat") { endDrag(); showChat(); pushOrb("setOrbState", { state: "chat" }); }
+      else if (data.action === "open_asr") {
+        // 悬浮球右键：开始语音识别（先停 TTS/旧识别，再开本页 ASR 气泡，识别在页面顶层执行）
+        stopContentTts();
+        stopAsr();
+        pushOrb("setOrbState", { state: "asr" });
+        showBubble();
+        pushBubble("setTheme", { theme: currentTheme });
+        startAsr();
       }
     } else if (data.kind === "chat") {
-      if (data.action === "drag_start") startDrag(CHAT);
+      if (data.action === "drag_start") startMaskDrag(CHAT);
       else if (data.action === "hide") { hideChat(); pushOrb("setOrbState", { state: "idle" }); }
     } else if (data.kind === "bubble") {
-      if (data.action === "demo_done") pushOrb("setOrbState", { state: "idle" });
+      if (data.action === "demo_done") {
+        // 气泡结束：聊天窗开着时不改悬浮球状态（保持 chat 态）
+        if (CHAT.classList.contains("show")) return;
+        pushOrb("setOrbState", { state: "idle" });
+      }
     }
   });
 
-  // ---------- 拖动（content script 全局监听 mousemove） ----------
+  // ---------- 拖动 ----------
+  // 悬浮球：Pointer Capture 协议（button.js 捕获指针后按屏幕坐标上报 drag_move/drag_end，无遮罩）
+  // 聊天窗：遮罩协议（chat iframe 内 drag_start → 全屏遮罩接管 mousemove）
   let dragging = false;
-  function startDrag(frame) {
+  let dragFrame = null;  // pointer 模式：当前拖动的 iframe
+  let dragOrigin = null; // pointer 模式：起始 {left, top}
+  let dragMouse = null;  // pointer 模式：起始 {x, y}
+  let dragEndFn = null;  // 遮罩模式：结束函数
+
+  function ensureOrbDrag(x, y) {
+    if (dragFrame) return;
+    dragFrame = ORB;
+    const r = ORB.getBoundingClientRect();
+    dragOrigin = { left: r.left, top: r.top };
+    dragMouse = { x: x, y: y };
+    ORB.style.left = r.left + "px";
+    ORB.style.top = r.top + "px";
+    ORB.style.right = "auto";
+    ORB.style.bottom = "auto";
+  }
+  function moveDrag(x, y) {
+    // 注意顺序：dragFrame 为 null（首次拖动）时必须先初始化，不能直接 return
+    if (!dragFrame) { ensureOrbDrag(x, y); return; }
+    if (dragFrame !== ORB) return;
+    if (!dragOrigin || !dragMouse) { ensureOrbDrag(x, y); return; }
+    ORB.style.left = (dragOrigin.left + (x - dragMouse.x)) + "px";
+    ORB.style.top = (dragOrigin.top + (y - dragMouse.y)) + "px";
+    // 强关联：拖动悬浮球时，开着的弹窗实时跟随贴靠
+    if (CHAT.classList.contains("show")) placePanel(CHAT, 400, 620, "top-left");
+    if (BUBBLE.classList.contains("show")) placePanel(BUBBLE, 420, 96, "left");
+  }
+  function endDrag() {
+    const wasOrb = (dragFrame === ORB);
+    dragFrame = null;
+    dragOrigin = null;
+    dragMouse = null;
+    if (dragEndFn) dragEndFn();
+    dragEndFn = null;
+    dragging = false;
+    // 拖动悬浮球结束：开着的弹窗收尾贴靠一次（拖动聊天窗自身不重置其位置）
+    if (wasOrb) {
+      if (CHAT.classList.contains("show")) placePanel(CHAT, 400, 620, "top-left");
+      if (BUBBLE.classList.contains("show")) placePanel(BUBBLE, 420, 96, "left");
+    }
+  }
+
+  /* 遮罩模式（聊天窗）：全屏透明遮罩接管鼠标。
+     不要用 ev.buttons 判断松开——mousedown 在 iframe 内、鼠标移到遮罩后，
+     Chrome 跨 iframe 边界不传递按钮状态，buttons 恒为 0 会把拖动立即误杀。 */
+  function startMaskDrag(frame) {
     if (dragging) return;
     dragging = true;
+    const mask = document.createElement("div");
+    mask.id = "llm-float-drag-mask";
+    mask.style.cssText =
+      "position:fixed;inset:0;z-index:2147483647;cursor:grabbing;background:transparent;";
+    document.documentElement.appendChild(mask);
     let started = false, sx = 0, sy = 0, bx = 0, by = 0;
+    const end = () => {
+      window.removeEventListener("mousemove", mv);
+      window.removeEventListener("mouseup", end);
+      mask.removeEventListener("mouseup", end);
+      if (mask && mask.parentNode) mask.parentNode.removeChild(mask);
+      dragEndFn = null;
+      dragging = false;
+    };
     const mv = (ev) => {
       if (!started) {
         started = true;
@@ -128,17 +342,16 @@
       frame.style.left = (bx + ev.clientX - sx) + "px";
       frame.style.top = (by + ev.clientY - sy) + "px";
     };
-    const up = () => {
-      window.removeEventListener("mousemove", mv);
-      window.removeEventListener("mouseup", up);
-      dragging = false;
-    };
+    dragEndFn = end;
     window.addEventListener("mousemove", mv);
-    window.addEventListener("mouseup", up);
+    window.addEventListener("mouseup", end);
+    mask.addEventListener("mouseup", end); // 遮罩上松开：主结束路径（直接命中，不依赖冒泡）
   }
 
   function showChat() {
+    hideBubble(); // 互斥：打开聊天窗先关字幕气泡（并停止 TTS/ASR）
     CHAT.classList.add("show");
+    placePanel(CHAT, 400, 620, "top-left"); // 左上方
     pushChat("onChatFocus", {});
   }
   function hideChat() {
@@ -148,28 +361,35 @@
   // ---------- background → content script ----------
   chrome.runtime.onMessage.addListener((msg) => {
     if (!msg) return;
-    if (msg.type === "llm_active_profile") {
+    if (msg.type === "llm_set_orb_enabled") {
+      setEnabled(msg.enabled !== false);
+    } else if (msg.type === "llm_active_profile") {
       pushChat("setActiveChatProfile", { profile: { chatName: msg.name || "" } });
       startTtsTarget();
     } else if (msg.type === "llm_config_updated") {
       // 设置页保存后：重拉配置推给 iframe
       try {
         chrome.runtime.sendMessage({ type: "llm_init" }, (resp) => {
+          if (chrome.runtime.lastError) return;
           const d = (resp && resp.data) || {};
           currentTheme = d.theme || "flat";
           pushThemeAll();
-          pushOrb("setOrbSize", { size: d.orb_size || 68 });
+          orbSize = d.orb_size || 68;
+          pushOrb("setOrbSize", { size: orbSize });
           pushChat("setChatProfiles", { profiles: d.chat_profiles || [] });
           startTtsTarget();
         });
       } catch (e) { /* 忽略 */ }
     } else if (msg.type === "llm_demo") {
-      // 设置页 TTS / ASR demo：显示字幕气泡并执行，悬浮球切对应状态
-      showBubble();
+      // 工具栏 popup / 设置页 TTS / ASR demo：先停旧 TTS/ASR，再显示字幕气泡执行（互斥：开气泡自动关聊天窗）
+      stopContentTts();
+      stopAsr();
       const isAsr = msg.demo === "asr";
       pushOrb("setOrbState", { state: isAsr ? "asr" : "tts" });
+      showBubble();
       pushBubble("setTheme", { theme: currentTheme });
-      pushBubble("runDemo", { type: isAsr ? "asr" : "tts" });
+      if (isAsr) startAsrMock(); // DEMO 按钮：模拟识别过程（内网/无麦克风也能演示）
+      else pushBubble("runDemo", { type: "tts" });
     }
   });
 
@@ -219,6 +439,7 @@
 
   function speakText(text) {
     try {
+      stopAsr(); // 互斥：朗读时停止正在进行的识别
       const sentences = String(text).split(/[。！？!?；;]/).map(s => s.trim()).filter(Boolean);
       if (!sentences.length) return;
       showBubble();

@@ -1,6 +1,7 @@
 const orb = document.getElementById("orb");
 
-let dragging = false;
+let moved = false;
+let captured = false;
 let downX = 0;
 let downY = 0;
 
@@ -52,43 +53,52 @@ window.assistant.setOrbState = function (payload) {
   }
 };
 
-/* ---------- drag vs click ---------- */
-function onMouseMove(e) {
-  if (dragging) return;
-  if (Math.abs(e.screenX - downX) > DRAG_THRESHOLD ||
-      Math.abs(e.screenY - downY) > DRAG_THRESHOLD) {
-    dragging = true;
-    orb.classList.add("dragging");
-    window.parent.postMessage({ kind: "orb", action: "drag_start" }, "*");
-    window.removeEventListener("mousemove", onMouseMove);
-  }
-}
-
-function onMouseUp() {
-  window.removeEventListener("mousemove", onMouseMove);
-  window.removeEventListener("mouseup", onMouseUp);
-  orb.classList.remove("dragging");
-}
-
-orb.addEventListener("mousedown", (e) => {
-  if (e.button !== 0) return;
-  dragging = false;
+/* ---------- Pointer Capture 拖动：按住移动=拖动，单击=开聊天 ----------
+   指针在 iframe 内被捕获（setPointerCapture），鼠标移到屏幕任意位置
+   事件都不中断，彻底规避跨 iframe 边界丢事件/遮罩竞态问题。 */
+orb.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0) return; // 仅左键
   downX = e.screenX;
   downY = e.screenY;
-  window.addEventListener("mousemove", onMouseMove);
-  window.addEventListener("mouseup", onMouseUp);
+  moved = false;
+  captured = true;
+  try { orb.setPointerCapture(e.pointerId); } catch (err) { /* 忽略 */ }
+  e.preventDefault();
 });
 
-orb.addEventListener("click", (e) => {
-  if (dragging) {
-    dragging = false;
-    return;
+orb.addEventListener("pointermove", (e) => {
+  if (!captured) return;
+  const dx = e.screenX - downX;
+  const dy = e.screenY - downY;
+  if (dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD) moved = true;
+  if (moved) {
+    orb.classList.add("dragging");
+    try {
+      window.parent.postMessage({ kind: "orb", action: "drag_move", x: e.screenX, y: e.screenY }, "*");
+    } catch (err) { /* 忽略 */ }
   }
-  window.parent.postMessage({ kind: "orb", action: "open_chat" }, "*");
 });
+
+function endPointer() {
+  if (!captured) return;
+  captured = false;
+  orb.classList.remove("dragging");
+  try {
+    if (moved) {
+      // 拖动结束：通知 content 落定位置
+      window.parent.postMessage({ kind: "orb", action: "drag_end" }, "*");
+    } else {
+      // 单击（无位移）：打开聊天窗口
+      window.parent.postMessage({ kind: "orb", action: "open_chat" }, "*");
+    }
+  } catch (err) { /* 忽略 */ }
+}
+orb.addEventListener("pointerup", endPointer);
+orb.addEventListener("pointercancel", endPointer);
 
 orb.addEventListener("contextmenu", (e) => {
   e.preventDefault();
-  if (dragging) return;
-  window.parent.postMessage({ kind: "orb", action: "open_settings" }, "*");
+  if (captured) return;
+  // 右键：开始语音识别（ASR）
+  window.parent.postMessage({ kind: "orb", action: "open_asr" }, "*");
 });
