@@ -148,25 +148,34 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
    - Python 不在时：扩展完全自足，仅定时尝试重连
    ============================================================ */
 const PY_BRIDGE_URL = "ws://127.0.0.1:7860/bridge";
+const BRIDGE_RETRY_BASE_MS = 3000;   // 重连退避基数
+const BRIDGE_RETRY_MAX_MS = 60000;   // 重连退避上限（纯插件场景不刷屏）
 let pyWs = null;
 let bridgeReconnectTimer = null;
+let bridgeFailCount = 0;             // 连续失败次数（成功连接时归零）
 
 function bridgeSend(obj) {
   try { if (pyWs && pyWs.readyState === 1) pyWs.send(JSON.stringify(obj)); } catch (e) { /* 忽略 */ }
 }
 
+function bridgeFail() {
+  // Python SDK 未启动属预期（纯插件模式）：首次提示一次，之后静默退避
+  if (bridgeFailCount === 0) console.log("[bridge] Python SDK 未启动（纯插件模式），后台退避重连中");
+  bridgeFailCount++;
+}
 function bridgeScheduleReconnect() {
   if (bridgeReconnectTimer) return;
-  bridgeReconnectTimer = setTimeout(() => { bridgeReconnectTimer = null; bridgeConnect(); }, 3000);
+  const delay = Math.min(BRIDGE_RETRY_BASE_MS * Math.pow(2, bridgeFailCount), BRIDGE_RETRY_MAX_MS);
+  bridgeReconnectTimer = setTimeout(() => { bridgeReconnectTimer = null; bridgeConnect(); }, delay);
 }
 
 function bridgeConnect() {
   try { if (pyWs) { pyWs.onclose = null; try { pyWs.close(); } catch (e) {} } } catch (e) { /* 忽略 */ }
   try {
     pyWs = new WebSocket(PY_BRIDGE_URL);
-  } catch (e) { pyWs = null; bridgeScheduleReconnect(); return; }
-  pyWs.onopen = () => console.log("[bridge] 已连接 Python SDK");
-  pyWs.onclose = () => { pyWs = null; bridgeScheduleReconnect(); };
+  } catch (e) { pyWs = null; bridgeFail(); bridgeScheduleReconnect(); return; }
+  pyWs.onopen = () => { bridgeFailCount = 0; console.log("[bridge] 已连接 Python SDK"); };
+  pyWs.onclose = () => { pyWs = null; bridgeFail(); bridgeScheduleReconnect(); };
   pyWs.onmessage = (ev) => {
     let m;
     try { m = JSON.parse(ev.data); } catch (e) { return; }
@@ -282,8 +291,9 @@ async function bridgeRoute(m) {
 chrome.alarms.create("py-bridge-keepalive", { periodInMinutes: 0.4 });
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name !== "py-bridge-keepalive") return;
-  if (!pyWs || pyWs.readyState !== 1) bridgeConnect();
-  else bridgeSend({ event: "ping" });
+  if (!pyWs || pyWs.readyState !== 1) {
+    if (!bridgeReconnectTimer) bridgeConnect(); // 退避等待中不抢跑
+  } else bridgeSend({ event: "ping" });
 });
 
 bridgeConnect();

@@ -20,8 +20,21 @@ const STORAGE_SCHEMA = [
   },
   {
     section: '字幕（TTS）',
+    segmentKey: 'tts_mode',
+    segmentOptions: [['off', '关'], ['stream', '流式'], ['http', '非流式']],
+    segmentDefault: 'stream',
     items: [
       { key: 'tts_lines', label: '显示行数', type: 'select', value: '2', options: [['1', '1'], ['2', '2'], ['3', '3'], ['5', '5']] },
+      // TTS 接口配置（WS /v1/audio/speech/stream + HTTP /v1/audio/speech），播报方式由标题栏三态选择
+      { key: 'tts_host', label: 'TTS 服务 HOST', type: 'text', value: '' },
+      { key: 'tts_api_key', label: 'TTS API Key', type: 'password', value: '' },
+      { key: 'tts_model', label: 'TTS 模型', type: 'text', value: 'qwen3-tts' },
+      { key: 'tts_voice', label: '音色 voice', type: 'text', value: 'vivian' },
+      { key: 'tts_response_format', label: '音频格式 response_format', type: 'text', value: 'pcm' },
+      { key: 'tts_sample_rate', label: '采样率 sample_rate', type: 'number', value: 24000, min: 8000, max: 48000, step: 1000 },
+      { key: 'tts_language', label: '语言 language', type: 'text', value: 'zh' },
+      { key: 'tts_speed', label: '语速 speed', type: 'number', value: 1.0, min: 0.5, max: 2.0, step: 0.1 },
+      { key: 'tts_instructions', label: '指令 instructions', type: 'text', value: '' },
     ],
   },
   {
@@ -86,7 +99,7 @@ function buildProfileRow(p) {
     ['urlRegex', '网址正则', p.urlRegex || ''],
     ['baseUrl', 'Base URL', p.baseUrl || ''],
     ['agentId', 'Agent ID', p.agentId || ''],
-    ['ttsTarget', 'TTS定位', p.ttsTarget || ''],
+    ['ttsTarget', '元素 id 或 CSS 选择器', p.ttsTarget || ''],
     ['token', 'Token', p.token || ''],
   ];
   fields.forEach(([pk, ph, val]) => {
@@ -214,6 +227,27 @@ function renderSettings(data) {
     sectionEl.appendChild(list);
     body.appendChild(sectionEl);
 
+    if (section.segmentKey && section.segmentOptions) {
+      // 标题栏三态选择（如 TTS 播报：关 / 流式 / 非流式）
+      title.classList.add('sec-title');
+      const seg = document.createElement('div');
+      seg.className = 'seg';
+      (section.segmentOptions || []).forEach((opt) => {
+        const val = opt[0], label = opt[1];
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'seg-btn' + (String(section.segment) === val ? ' active' : '');
+        b.textContent = label;
+        b.addEventListener('click', () => {
+          try { chrome.storage.local.set({ [section.segmentKey]: val }); } catch (e) { /* 忽略 */ }
+          seg.querySelectorAll('.seg-btn').forEach((x) => x.classList.remove('active'));
+          b.classList.add('active');
+        });
+        seg.appendChild(b);
+      });
+      title.appendChild(seg);
+    }
+
     if (section.collapsed) {
       title.classList.add('collapsible', 'collapsed');
       list.classList.add('hidden');
@@ -229,6 +263,7 @@ function renderSettings(data) {
 function mergeWithStorage(schema, values) {
   return schema.map(section => ({
     ...section,
+    segment: section.segmentKey ? (values && values[section.segmentKey] !== undefined ? String(values[section.segmentKey]) : (section.segmentDefault || (section.segmentOptions && section.segmentOptions[0] ? section.segmentOptions[0][0] : ""))) : undefined,
     items: (section.items || []).map(item => ({
       ...item,
       value: values && values[item.key] !== undefined ? values[item.key] : item.value,
@@ -268,6 +303,13 @@ function loadSettings() {
   chrome.storage.local.get(null, (all) => {
     const merged = mergeWithStorage(STORAGE_SCHEMA, all);
     renderSettings(merged);
+    // 一次性固化：把当前完整配置存为"默认快照"，此后点恢复默认回到此状态
+    if (all.__defaults === undefined) {
+      const snapshot = {};
+      merged.flatMap(s => s.items || []).forEach(i => { snapshot[i.key] = i.value; });
+      merged.forEach(s => { if (s.segmentKey && s.segment !== undefined) snapshot[s.segmentKey] = s.segment; });
+      try { chrome.storage.local.set({ __defaults: snapshot }); } catch (e) { /* 忽略 */ }
+    }
     const theme = merged.flatMap(s => s.items || []).find(i => i.key === 'theme');
     if (theme) applyTheme(theme.value);
   });
@@ -294,15 +336,22 @@ function saveSettings() {
 }
 
 function resetSettings() {
-  const defaults = {};
-  STORAGE_SCHEMA.forEach(s => (s.items || []).forEach(i => { defaults[i.key] = i.value; }));
-  chrome.storage.local.set(defaults, () => {
-    const merged = mergeWithStorage(STORAGE_SCHEMA, defaults);
-    renderSettings(merged);
-    const theme = merged.flatMap(s => s.items || []).find(i => i.key === 'theme');
-    if (theme) applyTheme(theme.value);
-    broadcastConfig();
-    showToast('已恢复默认');
+  // 恢复"默认快照"（首次打开设置页时固化的当前配置）；无快照时回退 schema 内置默认
+  chrome.storage.local.get('__defaults', (d) => {
+    const snap = d.__defaults || {};
+    const defaults = {};
+    STORAGE_SCHEMA.forEach(s => {
+      (s.items || []).forEach(i => { defaults[i.key] = snap[i.key] !== undefined ? snap[i.key] : i.value; });
+      if (s.segmentKey) defaults[s.segmentKey] = snap[s.segmentKey] !== undefined ? snap[s.segmentKey] : (s.segmentDefault || '');
+    });
+    chrome.storage.local.set(defaults, () => {
+      const merged = mergeWithStorage(STORAGE_SCHEMA, defaults);
+      renderSettings(merged);
+      const theme = merged.flatMap(s => s.items || []).find(i => i.key === 'theme');
+      if (theme) applyTheme(theme.value);
+      broadcastConfig();
+      showToast('已恢复默认');
+    });
   });
 }
 

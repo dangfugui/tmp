@@ -46,7 +46,7 @@ py-sdk/
 - **工具栏 popup 菜单**（单击插件 logo）：① 开关本插件 ② TTS 朗读 demo ③ ASR 识别 demo。demo 在**当前活动页面**执行：
   - TTS：`speechSynthesis` 逐句朗读 + 字幕逐句推进（无需 Python）
   - ASR：`webkitSpeechRecognition` 实时识别（interim 中间结果 / final 定稿）
-- **ttsTarget 自动朗读**：若当前聊天配置填了 TTS 定位（网页元素 id），content script 用 MutationObserver 监听该元素，出现新增文本自动朗读 + 气泡字幕。
+- **ttsTarget 自动朗读**：若当前聊天配置填了 TTS 定位（网页元素 **id 或 CSS 选择器**），content script **每 1s 轮询**该元素文本，与上次一致不触发；追加播增量、整体重写播全文——自动朗读 + 气泡字幕。
 - **Python 桥（方案 A：本地 WebSocket 桥，已实现）**：
   - 扩展 background 主动连接 `ws://127.0.0.1:7860/bridge`（连不上则纯 UI 自足），3s 自动重连 + alarm 保活
   - 命令三端同名：**SDK 方法名 = 页面控制台 `llm-ctrl` 命令 = 源码 `bridgeHandle` case 名**（`ping` / `getTabs` / `showChat(send=)` / `hideChat` / `sendText` / `stopChat` / `speakText` / `startAsr` / `setAsrText` / `endAsr` / `stopAsr` / `setTheme` / `setOrbSize` / `setOrbOpacity` / `getState` / `getConfig` / `setConfig` 等，均支持 `tabId=`，缺省活动页）
@@ -62,7 +62,7 @@ py-sdk/
 | `urlRegex` | 网址匹配正则（`new RegExp().test(url)`，第一条配置不填则默认兜底） |
 | `QWENPAW_BASE_URL` | QwenPaw 服务根地址（如 `http://localhost:8088`） |
 | `QWENPAW_AGENT_ID` | Agent ID |
-| `ttsTarget` | TTS 定位：网页该元素 id 出现新文本 → 自动朗读 + 字幕 |
+| `ttsTarget` | TTS 定位：网页元素 **id 或 CSS 选择器**（如 `chat-content`、`.msg`、`[data-role="assistant"]`），该元素新增文本 → 自动朗读 + 字幕 |
 | `token` | QwenPaw Web 认证 Bearer token（本地可留空） |
 
 会话标记 `QWENPAW_SESSION_ID` 自动取**本机 IP**，无需手动配置。
