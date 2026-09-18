@@ -465,9 +465,44 @@ function resetSettings() {
   });
 }
 
+/* ---------- 导入导出 ---------- */
+async function exportSettings() {
+  try {
+    const all = await chrome.storage.local.get(null);
+    const blob = new Blob([JSON.stringify(all, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "llm-float-config.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("已导出配置");
+  } catch (e) { showToast("导出失败: " + (e.message || e)); }
+}
+
+function importSettings() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      await chrome.storage.local.set(data);
+      showToast("已导入配置，刷新生效");
+      setTimeout(() => location.reload(), 800);
+    } catch (e) { showToast("导入失败: " + (e.message || e)); }
+  };
+  input.click();
+}
+
 /* ---------- 事件绑定 ---------- */
 document.getElementById('set-save')?.addEventListener('click', saveSettings);
 document.getElementById('set-reset')?.addEventListener('click', resetSettings);
+document.getElementById('set-export')?.addEventListener('click', exportSettings);
+document.getElementById('set-import')?.addEventListener('click', importSettings);
 document.getElementById('set-tts-demo')?.addEventListener('click', () => {
   try { chrome.runtime.sendMessage({ type: 'llm_demo', demo: 'tts' }); } catch (e) { /* 忽略 */ }
 });

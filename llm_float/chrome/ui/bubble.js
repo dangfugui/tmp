@@ -6,6 +6,13 @@ const asrDot = document.getElementById('asr-dot');
 const asrText = document.getElementById('asr-text');
 const asrStopBtn = document.getElementById('asr-stop');
 
+// 初始化拉取透明度
+try {
+  chrome.storage.local.get(["orb_opacity"], (d) => {
+    if (d.orb_opacity !== undefined) document.body.style.opacity = String(Math.max(0.2, Math.min(1.0, Number(d.orb_opacity))));
+  });
+} catch (e) {}
+
 let currentMode = 'subtitle';
 let asrFinal = '';
 

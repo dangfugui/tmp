@@ -204,7 +204,7 @@ registerCommand("ping", () => ({ ok: true }));
 registerCommand("getState", () => ({ ok: true, data: uiState }));
 registerCommand("setTheme", (p) => { currentTheme = p.theme || currentTheme; pushThemeAll(); return { ok: true }; });
 registerCommand("setOrbSize", (p) => { orbSize = p.orb_size || orbSize; pushOrb("setOrbSize", { size: orbSize }); return { ok: true }; });
-registerCommand("setOrbOpacity", (p) => { pushOrb("setOpacity", { opacity: p.orb_opacity }); pushBubble("setOpacity", { opacity: p.orb_opacity }); return { ok: true }; });
+registerCommand("setOrbOpacity", (p) => { pushOrb("setOpacity", { opacity: p.orb_opacity }); pushBubble("setOpacity", { opacity: p.orb_opacity }); pushChat("setOpacity", { opacity: p.orb_opacity }); return { ok: true }; });
 registerCommand("hideAll", () => {
   closePanel("chat");
   callCommand("stopSpeak", {}); callCommand("stopAsr", {});

@@ -10,8 +10,9 @@ const DRAG_THRESHOLD = 4;
 // 兜底：iframe 加载后直接读 storage（postMessage 可能早于本脚本注册；主题由 common.js 兜底）
 (function initFromStorage() {
   try {
-    chrome.storage.local.get(["orb_size"], (d) => {
+    chrome.storage.local.get(["orb_size", "orb_opacity"], (d) => {
       if (d.orb_size) window.assistant.setOrbSize({ size: d.orb_size });
+    if (d.orb_opacity !== undefined) window.assistant.setOpacity({ opacity: d.orb_opacity });
     });
   } catch (e) { /* 非扩展环境忽略 */ }
 })();
@@ -31,6 +32,11 @@ window.assistant.setOrbGradient = function (payload) {
 };
 /* New: switch the orb's visual state to match the active panel.
  * state: "idle" | "chat" | "settings" | "tts" | "asr" */
+window.assistant.setOpacity = function (payload) {
+  const op = Math.max(0.2, Math.min(1.0, Number(payload && payload.opacity !== undefined ? payload.opacity : 1)));
+  orb.style.opacity = String(op);
+};
+
 window.assistant.setOrbState = function (payload) {
   const state = payload && payload.state;
   if (["idle", "chat", "settings", "tts", "asr"].includes(state)) {

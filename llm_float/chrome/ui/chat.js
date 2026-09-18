@@ -18,7 +18,8 @@ function applyChatTheme(theme) {
 (function initFromStorage() {
   // 兜底：直接读 chrome.storage 填充（iframe 为扩展页，可访问；主题由 common.js 兜底）
   try {
-    chrome.storage.local.get(["chat_profiles", "active_profile_name"], (d) => {
+    chrome.storage.local.get(["chat_profiles", "active_profile_name", "orb_opacity"], (d) => {
+      if (d.orb_opacity !== undefined) document.body.style.opacity = String(Math.max(0.2, Math.min(1.0, Number(d.orb_opacity))));
       if (d.chat_profiles) window.assistant.setChatProfiles({ profiles: d.chat_profiles });
       if (d.active_profile_name) window.assistant.setActiveChatProfile({ profile: { chatName: d.active_profile_name } });
     });
@@ -380,7 +381,8 @@ let currentProfileCache = null; // { profiles, name }
 function refreshProfileCache() {
   return new Promise((resolve) => {
     try {
-      chrome.storage.local.get(["chat_profiles", "active_profile_name"], (d) => {
+      chrome.storage.local.get(["chat_profiles", "active_profile_name", "orb_opacity"], (d) => {
+      if (d.orb_opacity !== undefined) document.body.style.opacity = String(Math.max(0.2, Math.min(1.0, Number(d.orb_opacity))));
         currentProfileCache = {
           profiles: d.chat_profiles || [],
           name: d.active_profile_name || ""

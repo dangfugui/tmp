@@ -17,6 +17,7 @@ const AGENT_TOOL_DEFS = [
   { type: "function", function: { name: "page_wait", description: "【等待】等待若干毫秒（页面加载/动画/异步内容）", parameters: { type: "object", properties: { ms: { type: "number", description: "毫秒数，最大 10000" } }, required: ["ms"] } } },
   { type: "function", function: { name: "page_get_html", description: "【读网页 HTML】读取元素的 outerHTML（默认 body），最多 5000 字符", parameters: { type: "object", properties: { selector: { type: "string", description: "CSS 选择器，默认 body" } } } } },
   { type: "function", function: { name: "page_select", description: "【选下拉框】选择当前网页 select 下拉框的选项（优先按 option value 匹配，没匹配到按 option 文本匹配）", parameters: { type: "object", properties: { selector: { type: "string", description: "select 元素的 CSS 选择器" }, value: { type: "string", description: "要选的 option 的 value 或文本" } }, required: ["selector", "value"] } } },
+  { type: "function", function: { name: "web_fetch", description: "【抓网页】后台 fetch 任意 URL，返回页面纯文本内容（类似 web 搜索/抓取，不需要当前页面跳转）。查资料、读文档、抓网页内容用这个。注意：如果 web_fetch 和 navigate 都能实现需求，优先用 web_fetch，因为它是后台访问，不影响当前页面", parameters: { type: "object", properties: { url: { type: "string", description: "完整 URL（http/https 开头）" } }, required: ["url"] } } },
 ];
 
 const AGENT_TOOLS = {
@@ -35,6 +36,7 @@ const AGENT_TOOLS = {
   page_wait: async (p) => bridgeCmd("page_wait", { ms: (p && p.ms) || 500 }),
   page_get_html: async (p) => bridgeCmd("page_get_html", { selector: (p && p.selector) || "" }),
   page_select: async (p) => bridgeCmd("page_select", { selector: (p && p.selector) || "", value: (p && p.value) || "" }),
+  web_fetch: async (p) => bridgeCmd("web_fetch", { url: (p && p.url) || "" }),
 };
 
 /* ---- 页面工具：经 background 转发到当前页 content 命令表 ---- */
