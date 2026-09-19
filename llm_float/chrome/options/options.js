@@ -278,7 +278,7 @@ function prepareField(item) {
       preview.textContent = '预览主题';
       preview.title = '打开 11 组悬浮球风格预览页';
       preview.addEventListener('click', () => {
-        try { chrome.tabs.create({ url: chrome.runtime.getURL('design_preview.html') }); } catch (e) { /* 忽略 */ }
+        try { chrome.tabs.create({ url: chrome.runtime.getURL('data/design_preview.html') }); } catch (e) { /* 忽略 */ }
       });
       controlWrap.appendChild(preview);
     }

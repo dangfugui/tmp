@@ -575,7 +575,7 @@ let llmRound = 0;
 const MAX_TOOL_ROUNDS = 20;
 /* 从 agent-prompt.md 加载 system prompt（LLM 模式专用，qwenpaw 模式不用） */
 let SYSTEM_PROMPT = "你是一个网页助手，可以帮用户操作当前页面。用中文回复。";
-fetch(chrome.runtime.getURL("agent-prompt.md"))
+fetch(chrome.runtime.getURL("data/agent-prompt.md"))
   .then((r) => r.text())
   .then((t) => { SYSTEM_PROMPT = t.trim(); })
   .catch(() => { /* 加载失败用兜底 */ });

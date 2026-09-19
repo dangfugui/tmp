@@ -18,8 +18,14 @@ function initMain() {
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (!msg) return;
     if (msg.type === "llm_bridge") {
-      // Python 桥命令（background 转发）：同步响应
-      sendResponse(callCommand(msg.cmd, msg.params || {}));
+      // Python 桥命令（background 转发）：支持同步和异步命令
+      const result = callCommand(msg.cmd, msg.params || {});
+      if (result && typeof result.then === "function") {
+        // 异步命令（比如 page_wait），等 Promise resolve 后再响应
+        result.then((r) => sendResponse(r)).catch((e) => sendResponse({ ok: false, error: String((e && e.message) || e) }));
+        return true; // 表示会异步 sendResponse
+      }
+      sendResponse(result);
     } else if (msg.type === "llm_set_orb_enabled") {
       setEnabled(msg.enabled !== false);
     } else if (msg.type === "llm_active_profile") {
