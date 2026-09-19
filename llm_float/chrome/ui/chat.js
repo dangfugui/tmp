@@ -251,11 +251,41 @@ let restoring = false; // 恢复历史时不重复存
 let currentProfileName = ""; // 当前 agent 名（历史按 agent 分 key）
 function historyKey() { return "chat_history_" + (currentProfileName || "default"); }
 
-function addMessage(role, text) {
+function addMessage(role, text, detail) {
   const msg = el("div", `msg ${role}`);
   const bubble = el("div", "bubble");
   if (role === "bot") {
     bubble.innerHTML = renderMarkdown(text); // AI 回复渲染 Markdown
+  } else if (role === "tool") {
+    // 工具调用消息用工具样式
+    bubble.className = "bubble tool";
+    bubble.textContent = text;
+    bubble.style.cursor = "pointer";
+    bubble.title = "点击展开/收起详情";
+    // 如果有详情，加展开功能
+    if (detail) {
+      const detailEl = el("pre", "tool-detail");
+      detailEl.textContent = detail;
+      detailEl.style.display = "none";
+      bubble.addEventListener("click", () => {
+        detailEl.style.display = detailEl.style.display === "none" ? "block" : "none";
+      });
+      msg.append(bubble, detailEl);
+      messagesEl.appendChild(msg);
+      scrollToEnd();
+      // 持久化消息历史（按 agent 分 key，导航后自动恢复，最多 100 条）
+      if (!restoring && text) {
+        const key = historyKey();
+        try {
+          chrome.storage.local.get({ [key]: [] }, (d) => {
+            const h = (d[key] || []).slice(-99);
+            h.push({ role, text, detail });
+            chrome.storage.local.set({ [key]: h });
+          });
+        } catch (e) { /* 忽略 */ }
+      }
+      return;
+    }
   } else {
     bubble.textContent = text; // 用户消息原样显示
   }
@@ -415,11 +445,12 @@ let currentProfileCache = null; // { profiles, name }
 function refreshProfileCache() {
   return new Promise((resolve) => {
     try {
-      chrome.storage.local.get(["chat_profiles", "active_profile_name", "orb_opacity"], (d) => {
+      chrome.storage.local.get(["chat_profiles", "active_profile_name", "orb_opacity", "context_turns"], (d) => {
       if (d.orb_opacity !== undefined) document.body.style.opacity = String(Math.max(0.2, Math.min(1.0, Number(d.orb_opacity))));
         currentProfileCache = {
           profiles: d.chat_profiles || [],
-          name: d.active_profile_name || ""
+          name: d.active_profile_name || "",
+          contextTurns: parseInt(d.context_turns || "10", 10) || 10
         };
         resolve();
       });
@@ -542,13 +573,12 @@ function abortChat() {
 let llmMessages = [];
 let llmRound = 0;
 const MAX_TOOL_ROUNDS = 20;
-const SYSTEM_PROMPT = `你是一个网页助手，可以帮用户操作当前页面。
-规则：
-1. 优先用 web_fetch 后台抓取资料，不要随便 navigate（navigate 会跳页，结束当前对话）
-2. 操作前先 page_get_info 了解页面内容
-3. 完成任务后调用 done 工具结束，不要继续空转
-4. 遇到验证码/登录等无法解决的问题，用 ask_user 问用户
-5. 用中文回复`;
+/* 从 agent-prompt.md 加载 system prompt（LLM 模式专用，qwenpaw 模式不用） */
+let SYSTEM_PROMPT = "你是一个网页助手，可以帮用户操作当前页面。用中文回复。";
+fetch(chrome.runtime.getURL("agent-prompt.md"))
+  .then((r) => r.text())
+  .then((t) => { SYSTEM_PROMPT = t.trim(); })
+  .catch(() => { /* 加载失败用兜底 */ });
 
 /* agent 工具已迁到 ui/agent.js */
 /* ---- 工具执行与气泡展示 ---- */
@@ -612,6 +642,21 @@ async function dispatchTool(name, args) {
     detail.textContent = "▼ 参数\n" + argsStr + "\n\n▼ 结果\n" + resultStr;
   }
   scrollToEnd();
+  // 把工具调用也存到历史里（刷新后还能看到，含详情）
+  if (!restoring) {
+    const toolText = icon + " " + name + "  →  " + summary;
+    const argsStr = Object.keys(args || {}).length ? JSON.stringify(args, null, 2) : "（无参数）";
+    const resultStr = JSON.stringify(r, null, 2).slice(0, 2000); // 详情截断，省空间
+    const toolDetail = "▼ 参数\n" + argsStr + "\n\n▼ 结果\n" + resultStr;
+    try {
+      const key = historyKey();
+      chrome.storage.local.get({ [key]: [] }, (d) => {
+        const h = (d[key] || []).slice(-99);
+        h.push({ role: "tool", text: toolText, detail: toolDetail });
+        chrome.storage.local.set({ [key]: h });
+      });
+    } catch (e) {}
+  }
   return r;
 }
 
@@ -653,9 +698,26 @@ async function oneLlmCall() {
   if (!baseUrl) { finishReply("LLM 模式：Base URL 未配置（请填完整接口地址，如 https://api.deepseek.com/chat/completions）"); return false; }
   if (!cfg.token) { finishReply("LLM 模式：缺少 Token（OpenAI API Key）"); return false; }
   const headers = { "Content-Type": "application/json", "Authorization": "Bearer " + cfg.token };
+  // 上下文轮数限制：只传最新的 N 轮（默认 10 轮）
+  // 注意：要从完整的轮次开始，不能截断 tool_calls/tool 对
+  const ctxTurns = (currentProfileCache && currentProfileCache.contextTurns) || 10;
+  let recentMsgs = llmMessages;
+  if (llmMessages.length > ctxTurns * 4) {
+    // 从后往前找，找到第 ctxTurns 个 user 消息，从那里开始取
+    let userCount = 0;
+    let startIdx = 0;
+    for (let i = llmMessages.length - 1; i >= 0; i--) {
+      if (llmMessages[i].role === "user") {
+        userCount++;
+        if (userCount >= ctxTurns) { startIdx = i; break; }
+      }
+    }
+    recentMsgs = llmMessages.slice(startIdx);
+  }
+
   const body = {
     model: cfg.agentId || "qwen-plus",
-    messages: [{ role: "system", content: SYSTEM_PROMPT }, ...llmMessages],
+    messages: [{ role: "system", content: SYSTEM_PROMPT }, ...recentMsgs],
     stream: true,
     tools: AGENT_TOOL_DEFS,
     tool_choice: "auto",
@@ -904,7 +966,12 @@ function restoreHistory() {
         messagesEl.innerHTML = "";
         if (h.length === 0) { addMessage("bot", WELCOME); return; }
         restoring = true;
-        h.forEach((m) => addMessage(m.role, m.text));
+        // 恢复界面显示（工具调用带详情）
+        h.forEach((m) => addMessage(m.role, m.text, m.detail));
+        // 同时恢复 llmMessages，让 LLM 能看到之前的聊天记录
+        llmMessages = h
+          .filter((m) => m.role === "user" || m.role === "bot")
+          .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
         restoring = false;
         scrollToEnd();
       });
@@ -913,3 +980,17 @@ function restoreHistory() {
 }
 restoreHistory();
 inputEl.focus();
+
+/* 检查是不是从 navigate 跳过来的，是的话自动把 chatText 发给 LLM */
+chrome.storage.local.get(["pending_nav_chat"], (d) => {
+  const p = d && d.pending_nav_chat;
+  if (p && p.text) {
+    // 清空 pending
+    chrome.storage.local.remove(["pending_nav_chat"]);
+    // 延迟一点，等页面完全加载
+    setTimeout(() => {
+      inputEl.value = p.text;
+      send();
+    }, 500);
+  }
+});

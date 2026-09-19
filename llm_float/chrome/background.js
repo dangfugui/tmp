@@ -200,31 +200,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           }
           return;
         }
-        if (msg.cmd === "web_fetch") {
-          // 后台 fetch 任意 URL，返回页面文本内容（类似 web search/抓取）
-          try {
-            const url = (msg.params && msg.params.url) || "";
-            if (!/^https?:/i.test(url)) { sendResponse({ ok: false, error: "url 需以 http/https 开头" }); return; }
-            const resp = await fetch(url, { credentials: "omit", redirect: "follow" });
-            const ct = resp.headers.get("content-type") || "";
-            if (!/text|html|json|xml/i.test(ct)) {
-              sendResponse({ ok: true, data: { url, status: resp.status, contentType: ct, text: "(非文本内容)" } });
-              return;
-            }
-            const html = await resp.text();
-            const text = html
-              .replace(/<script[\s\S]*?<\/script>/gi, "")
-              .replace(/<style[\s\S]*?<\/style>/gi, "")
-              .replace(/<[^>]+>/g, " ")
-              .replace(/\s+/g, " ")
-              .trim()
-              .slice(0, 8000);
-            sendResponse({ ok: true, data: { url, status: resp.status, contentType: ct, text } });
-          } catch (e) {
-            sendResponse({ ok: false, error: "web_fetch 失败: " + String((e && e.message) || e) });
-          }
-          return;
-        }
+        // web_fetch 现在在 content script 里执行（自动带当前页面 cookie）
         chrome.tabs.sendMessage(tab.id, { type: "llm_bridge", cmd: msg.cmd, params: msg.params || {} }, (resp) => {
           sendResponse(resp || { ok: false, error: "content no response" });
         });

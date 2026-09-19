@@ -53,8 +53,25 @@ registerCommand("page_set_input", (p) => {
   try {
     const el = document.querySelector((p && p.selector) || "");
     if (!el) return { ok: false, error: "元素不存在: " + (p && p.selector) };
+    const val = String((p && p.value) || "");
     el.focus();
-    el.value = String((p && p.value) || "");
+
+    // ProseMirror 富文本编辑器支持
+    const isProseMirror = el.classList.contains("ProseMirror") || el.closest(".ProseMirror");
+    if (isProseMirror) {
+      // 先清空内容
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      // 用 execCommand 注入文本
+      document.execCommand("insertText", false, val);
+      return { ok: true, data: { set: true, tag: el.tagName, rich: "ProseMirror" } };
+    }
+
+    // 普通 input/textarea
+    el.value = val;
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
     return { ok: true, data: { set: true, tag: el.tagName } };
@@ -116,5 +133,27 @@ registerCommand("page_select", (p) => {
     el.value = matched.value;
     el.dispatchEvent(new Event("change", { bubbles: true }));
     return { ok: true, data: { selected: matched.value, text: matched.text } };
+  } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+});
+
+/* 后台抓网页：从 content script 发起，自动带当前页面的 cookie 和登录信息 */
+registerCommand("web_fetch", async (p) => {
+  try {
+    const url = (p && p.url) || "";
+    if (!/^https?:/i.test(url)) return { ok: false, error: "url 需以 http/https 开头" };
+    const resp = await fetch(url, { credentials: "include", redirect: "follow" });
+    const ct = resp.headers.get("content-type") || "";
+    if (!/text|html|json|xml/i.test(ct)) {
+      return { ok: true, data: { url, status: resp.status, contentType: ct, text: "(非文本内容)" } };
+    }
+    const html = await resp.text();
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 8000);
+    return { ok: true, data: { url, status: resp.status, contentType: ct, text } };
   } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
 });

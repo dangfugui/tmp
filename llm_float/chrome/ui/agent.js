@@ -4,14 +4,15 @@
 const AGENT_TOOL_DEFS = [
   { type: "function", function: { name: "page_get_info", description: "【读网页】获取当前网页的 URL、标题与可见文本摘要。了解页面内容时优先用这个，不要用 page_exec_js", parameters: { type: "object", properties: {} } } },
   { type: "function", function: { name: "page_read", description: "【读网页】按 CSS 选择器读取当前网页某个元素的文本/HTML。读页面内容用这个，不要用 page_exec_js", parameters: { type: "object", properties: { selector: { type: "string", description: "CSS 选择器，如 #title、.content p" } }, required: ["selector"] } } },
-  { type: "function", function: { name: "page_exec_js", description: "【操作网页】在当前网页执行一段 JavaScript（点击、填表单等动态操作）。注意：CSP 严格页面会被浏览器拒绝，此时请改用 page_read/page_get_info", parameters: { type: "object", properties: { code: { type: "string", description: "要执行的 JS 表达式或语句（return 的值会被 JSON 返回）" } }, required: ["code"] } } },
+  // 【已禁用】page_exec_js：CSP 严格页面用不了，避免走弯路
+  // { type: "function", function: { name: "page_exec_js", description: "【操作网页】在当前网页执行一段 JavaScript（点击、填表单等动态操作）。注意：CSP 严格页面会被浏览器拒绝，此时请改用 page_read/page_get_info", parameters: { type: "object", properties: { code: { type: "string", description: "要执行的 JS 表达式或语句（return 的值会被 JSON 返回）" } }, required: ["code"] } } } },
   { type: "function", function: { name: "fs_read", description: "【读本地文件】读取已授权工作目录内的文本文件（路径相对工作目录）。优先用 startLine/endLine 按行读省 token；不传则按字符 offset/limit", parameters: { type: "object", properties: { path: { type: "string", description: "相对路径，如 src/main.py" }, startLine: { type: "number", description: "起始行号（1-based），与 endLine 配合按行读" }, endLine: { type: "number", description: "结束行号（1-based），不传则读到文件末尾" }, offset: { type: "number", description: "起始字符偏移（不传 startLine 时才用）" }, limit: { type: "number", description: "本次最多读取字符数（不传 startLine 时才用）" } }, required: ["path"] } } },
   { type: "function", function: { name: "fs_write", description: "【写本地文件】写入已授权工作目录内的文件（不存在则创建，注意是覆盖写入）", parameters: { type: "object", properties: { path: { type: "string", description: "相对路径" }, content: { type: "string", description: "文件内容" } }, required: ["path", "content"] } } },
   { type: "function", function: { name: "fs_find", description: "【找本地文件】在已授权工作目录内递归查找文件名匹配的文件（glob，如 *.py、data/*.json）", parameters: { type: "object", properties: { pattern: { type: "string", description: "文件名 glob 模式" } }, required: ["pattern"] } } },
   { type: "function", function: { name: "page_click", description: "【点网页】点击当前网页某个元素（按钮/链接/输入框等）。帮用户点页面用这个，不受 CSP 限制", parameters: { type: "object", properties: { selector: { type: "string", description: "CSS 选择器，如 #submitBtn、a.login" } }, required: ["selector"] } } },
   { type: "function", function: { name: "page_set_input", description: "【填网页】给当前网页输入框/文本框填值并触发 input/change 事件。帮用户填表单用这个，不受 CSP 限制", parameters: { type: "object", properties: { selector: { type: "string", description: "CSS 选择器，如 #kw、textarea.content" }, value: { type: "string", description: "要填入的值" } }, required: ["selector", "value"] } } },
   { type: "function", function: { name: "page_get_attr", description: "【读网页属性】读取当前网页元素的属性或 value（如输入框当前值、链接 href）", parameters: { type: "object", properties: { selector: { type: "string", description: "CSS 选择器" }, attr: { type: "string", description: "属性名，默认 value（也可用 href、id、className 等）" } }, required: ["selector"] } } },
-  { type: "function", function: { name: "navigate", description: "【切页面】当前标签页导航到新 URL（不切标签页，悬浮窗自动重新注入）。注意：这是最后一步——调用后页面会跳转，与当前页面的交互就结束了，不要在之后继续操作当前页面", parameters: { type: "object", properties: { url: { type: "string", description: "要导航到的完整 URL（http/https 开头）" } }, required: ["url"] } } },
+  { type: "function", function: { name: "navigate", description: "【切页面】当前标签页导航到新 URL（不切标签页，悬浮窗自动重新注入）。注意：这是最后一步——调用后页面会跳转，与当前页面的交互就结束了。可以传 chatText 参数，跳转后自动把这个文本发给新页面的 LLM 继续对话，这样交互就连起来了", parameters: { type: "object", properties: { url: { type: "string", description: "要导航到的完整 URL（http/https 开头）" }, chatText: { type: "string", description: "跳转后自动发给 LLM 的文本（可选，不传就不自动发）" } }, required: ["url"] } } },
   { type: "function", function: { name: "page_scroll", description: "【滚网页】滚动页面或元素（direction: top/bottom/up/down，不带 selector 滚整页）", parameters: { type: "object", properties: { selector: { type: "string", description: "要滚动到的元素 CSS 选择器（可选，不带则滚整页）" }, direction: { type: "string", description: "top/bottom/up/down，默认 bottom" } } } } },
   { type: "function", function: { name: "page_hover", description: "【悬停网页】鼠标悬停到元素上（触发下拉菜单/悬浮层）", parameters: { type: "object", properties: { selector: { type: "string", description: "CSS 选择器" } }, required: ["selector"] } } },
   { type: "function", function: { name: "page_wait", description: "【等待】等待若干毫秒（页面加载/动画/异步内容）", parameters: { type: "object", properties: { ms: { type: "number", description: "毫秒数，最大 10000" } }, required: ["ms"] } } },
@@ -25,14 +26,22 @@ const AGENT_TOOL_DEFS = [
 const AGENT_TOOLS = {
   page_get_info: async () => bridgeCmd("getPageInfo", {}),
   page_read: async (p) => bridgeCmd("querySelector", { selector: (p && p.selector) || "" }),
-  page_exec_js: async (p) => bridgeCmd("execJs", { code: (p && p.code) || "" }),
+  // page_exec_js: async (p) => bridgeCmd("execJs", { code: (p && p.code) || "" }),  // 已禁用
   fs_read: async (p) => fsTool("read", p),
   fs_write: async (p) => fsTool("write", p),
   fs_find: async (p) => fsTool("find", p),
   page_click: async (p) => bridgeCmd("page_click", { selector: (p && p.selector) || "" }),
   page_set_input: async (p) => bridgeCmd("page_set_input", { selector: (p && p.selector) || "", value: (p && p.value) || "" }),
   page_get_attr: async (p) => bridgeCmd("page_get_attr", { selector: (p && p.selector) || "", attr: (p && p.attr) || "" }),
-  navigate: async (p) => bridgeCmd("navigate", { url: (p && p.url) || "" }),
+  navigate: async (p) => {
+    const url = (p && p.url) || "";
+    const chatText = (p && p.chatText) || "";
+    // 如果有 chatText，先存到 storage，跳转后新页面自动读取并发送
+    if (chatText) {
+      try { await chrome.storage.local.set({ pending_nav_chat: { text: chatText, ts: Date.now() } }); } catch (e) {}
+    }
+    return bridgeCmd("navigate", { url });
+  },
   page_scroll: async (p) => bridgeCmd("page_scroll", { selector: (p && p.selector) || "", direction: (p && p.direction) || "" }),
   page_hover: async (p) => bridgeCmd("page_hover", { selector: (p && p.selector) || "" }),
   page_wait: async (p) => bridgeCmd("page_wait", { ms: (p && p.ms) || 500 }),

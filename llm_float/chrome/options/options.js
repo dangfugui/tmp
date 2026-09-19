@@ -9,6 +9,7 @@ const STORAGE_SCHEMA = [
       { key: 'theme', label: '主题', type: 'select', value: 'glass', options: [['glass', '液态玻璃'], ['flat', '极简扁平'], ['neon', '霓虹赛博'], ['macaron', '马卡龙奶油'], ['metal', '金属质感'], ['candy', '活力糖果'], ['morandi', '莫兰迪雅致'], ['synthwave', '复古合成波'], ['green', '自然绿意'], ['mono', '黑白极简'], ['brand', '品牌蓝'], ['pageagent', 'PageAgent']] },
       { key: 'orb_size', label: '悬浮球大小', type: 'number', value: 68, min: 40, max: 96, step: 1 },
       { key: 'agent_workdir', label: 'Agent 工作目录', type: 'agent_workdir', value: '' },
+      { key: 'context_turns', label: '上下文轮数', type: 'number', value: 10, min: 1, max: 50, step: 1 },
     ],
   },
   {
@@ -72,7 +73,6 @@ const STORAGE_SCHEMA = [
       { key: 'system_prompt', label: 'System Prompt', type: 'textarea', value: '你是一个有用的桌面助手，回答尽量简洁。' },
       { key: 'temperature', label: 'temperature', type: 'number', value: 0.7, min: 0, max: 2, step: 0.1 },
       { key: 'max_tokens', label: '单次最大 tokens', type: 'number', value: 2048, min: 256, max: 32768, step: 256 },
-      { key: 'context_turns', label: '上下文轮数', type: 'number', value: 10, min: 1, max: 50, step: 1 },
       { key: 'stream', label: '流式输出', type: 'bool', value: true },
       { key: 'tts_font_size', label: '字号', type: 'number', value: 18, min: 12, max: 40, step: 1 },
       { key: 'tts_max_chars', label: '每行最大字数', type: 'number', value: 24, min: 8, max: 60, step: 1 },
