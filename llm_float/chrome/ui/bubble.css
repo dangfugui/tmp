@@ -64,8 +64,9 @@ body[data-theme="pageagent"] .pill-card {
   background:
     var(--bg-card) padding-box,
     linear-gradient(to top right, #39b6ff, #bd45fb, #39b6ff) border-box;
-  backdrop-filter: blur(26px) saturate(1.35);
-  -webkit-backdrop-filter: blur(26px) saturate(1.35);
+  /* backdrop-filter 性能优化：Mac 上太卡，暂时关掉 */
+  /* backdrop-filter: blur(26px) saturate(1.35);
+  -webkit-backdrop-filter: blur(26px) saturate(1.35); */
   animation: pageagentFlow 2s linear infinite;
   box-shadow:
     0 0 10px rgba(57, 182, 255, 0.6),

@@ -26,8 +26,9 @@ body { padding: 0; }
   overflow: hidden;
   background: var(--bg-card);
   border: 1px solid var(--glass-border);
-  backdrop-filter: blur(26px) saturate(1.35);
-  -webkit-backdrop-filter: blur(26px) saturate(1.35);
+  /* backdrop-filter 性能优化：Mac 上太卡，暂时关掉 */
+  /* backdrop-filter: blur(26px) saturate(1.35);
+  -webkit-backdrop-filter: blur(26px) saturate(1.35); */
   box-shadow: var(--shadow-card);
 }
 
