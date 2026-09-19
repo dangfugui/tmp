@@ -1,7 +1,7 @@
 {
-  "theme": "flat",
+  "theme": "pageagent",
   "orb_size": 68,
-  "orb_opacity": 1.0,
+  "orb_opacity": 1,
   "orb_enabled": true,
   "chat_profiles": [
     {
@@ -30,23 +30,44 @@
       "token": "",
       "ttsTarget": ".b_searchbox",
       "mode": "qwenpaw"
+    },
+    {
+      "chatName": "deepseek",
+      "urlRegex": "deepseek.com",
+      "baseUrl": "https://api.deepseek.com/chat/completions",
+      "agentId": "deepseek-flash",
+      "token": "sk-",
+      "ttsTarget": "",
+      "mode": "llm"
     }
   ],
   "quick_links": [
-    { "name": "百度", "url": "https://www.baidu.com" },
-    { "name": "Bing", "url": "https://www.bing.com" }
+    { "name": "deepseek", "url": "deepseek.com" },
+    { "name": "baidu", "url": "baidu.com" }
   ],
   "active_profile_name": "默认",
   "tts_mode": "off",
-  "tts_host": "http://{HOST}",
+  "tts_host": "wss://{HOST}/v1/audio/speech/stream",
   "tts_model": "qwen3-tts",
   "tts_voice": "vivian",
   "tts_language": "",
   "tts_speed": 0,
   "tts_instructions": "",
+  "tts_font_size": 18,
+  "tts_lines": "2",
+  "tts_max_chars": 24,
+  "tts_hold": 3,
+  "tts_align": "center",
+  "tts_auto_hide": true,
+  "tts_sample_rate": 24000,
+  "tts_response_format": "pcm",
   "asr_mode": "off",
-  "asr_host": "http://{HOST}",
+  "asr_host": "http://{HOST}/v1/audio/speech/stream",
   "asr_model": "qwen3-asr",
   "asr_language": "auto",
-  "asr_show_interim": true
+  "asr_show_interim": true,
+  "asr_silence": 3,
+  "asr_sample_rate": "16000",
+  "asr_auto_punct": true,
+  "asr_devices": ["默认麦克风"]
 }

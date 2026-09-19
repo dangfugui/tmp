@@ -506,17 +506,18 @@ function saveSettings() {
 }
 
 async function resetSettings() {
-  // 从 data/default-config.json 读取默认配置，填入表单（点击保存才生效）
+  // 从 data/default-config.json 读取默认配置，重新渲染整个表单
   try {
     const resp = await fetch(chrome.runtime.getURL("data/default-config.json"));
     const defaults = await resp.json();
-    // 把默认值填入表单
-    for (const [k, v] of Object.entries(defaults)) {
-      const el = document.querySelector(`[data-key="${k}"]`);
-      if (!el) continue;
-      if (el.type === "checkbox") el.checked = !!v;
-      else el.value = typeof v === "object" ? JSON.stringify(v) : v;
-    }
+    // 用默认配置重新渲染整个设置页面
+    renderSettings(currentSettings.map(section => ({
+      ...section,
+      items: section.items.map(item => ({
+        ...item,
+        value: defaults[item.key] !== undefined ? defaults[item.key] : item.value
+      }))
+    })));
     showToast('已填入默认配置，点击保存生效');
   } catch (e) {
     showToast('恢复默认失败: ' + (e.message || e));

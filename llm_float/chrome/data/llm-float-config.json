@@ -158,11 +158,21 @@
   },
   "orb_size": 68,
   "proxy": "",
+  "quick_links": [
+    {
+      "name": "deepseek",
+      "url": "deepseek.com"
+    },
+    {
+      "name": "baidu",
+      "url": "baidu.com"
+    }
+  ],
   "sec_tts_expanded": true,
   "stream": true,
   "system_prompt": "你是一个有用的桌面助手，回答尽量简洁。",
   "temperature": 0.7,
-  "theme": "neon",
+  "theme": "pageagent",
   "tts_align": "center",
   "tts_api_key": "API_KEY",
   "tts_auto_hide": true,
