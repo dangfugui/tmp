@@ -203,6 +203,33 @@ body { padding: 0; }
   margin-bottom: 2px;
 }
 
+/* ========== PageAgent 主题开始（删除主题时删除本段）========== */
+/* PageAgent 主题：霓虹渐变边框动画 */
+[data-theme="pageagent"] .card {
+  position: relative;
+  border: 3px solid transparent;
+  background:
+    linear-gradient(rgba(2, 0, 20, 0.95), rgba(2, 0, 20, 0.95)) padding-box,
+    linear-gradient(to bottom left, #39b6ff, #bd45fb, #39b6ff) border-box;
+  animation: borderFlow 2s linear infinite;
+}
+[data-theme="pageagent"] .card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 28px;
+  background: linear-gradient(to bottom left, #39b6ff, #bd45fb, #39b6ff);
+  filter: blur(12px);
+  opacity: 0.4;
+  z-index: -1;
+  animation: borderFlow 2s linear infinite;
+}
+@keyframes borderFlow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 200%; }
+}
+/* ========== PageAgent 主题结束 ========== */
+
 /* ---------- typing ---------- */
 .bubble.typing {
   display: inline-flex;

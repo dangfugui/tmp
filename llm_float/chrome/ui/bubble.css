@@ -53,6 +53,40 @@ body[data-theme="neon"] { --bubble-glow: rgba(34, 211, 238, .5); }
 body[data-theme="synthwave"] { --bubble-glow: rgba(168, 85, 247, .45); }
 body[data-theme="glass"] { --bubble-glow: rgba(109, 124, 255, .42); }
 body[data-theme="macaron"] { --bubble-glow: rgba(255, 179, 193, .45); }
+/* ========== PageAgent 主题开始（删除主题时删除本段）========== */
+body[data-theme="pageagent"] { --bubble-glow: rgba(57, 182, 255, .5); }
+body[data-theme="pageagent"][data-mode="asr"] { --bubble-glow: rgba(34, 197, 94, .5); }
+
+/* PageAgent 主题：霓虹渐变边框（跟 chat 页面一致） */
+body[data-theme="pageagent"] .pill-card {
+  position: relative;
+  border: 3px solid transparent;
+  background:
+    var(--bg-card) padding-box,
+    linear-gradient(to top right, #39b6ff, #bd45fb, #39b6ff) border-box;
+  backdrop-filter: blur(26px) saturate(1.35);
+  -webkit-backdrop-filter: blur(26px) saturate(1.35);
+  animation: pageagentFlow 2s linear infinite;
+  box-shadow:
+    0 0 10px rgba(57, 182, 255, 0.6),
+    0 0 20px rgba(189, 69, 251, 0.4);
+}
+body[data-theme="pageagent"] .pill-card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 26px;
+  background: linear-gradient(to top right, #39b6ff, #bd45fb, #39b6ff);
+  filter: blur(12px);
+  opacity: 0.4;
+  z-index: -1;
+  animation: pageagentFlow 2s linear infinite;
+}
+@keyframes pageagentFlow {
+  0% { background-position: 0 0, 0% 0%; }
+  100% { background-position: 0 0, 200% 200%; }
+}
+/* ========== PageAgent 主题结束 ========== */
 
 body[data-mode="asr"] {
   --bubble-glow: rgba(52, 211, 153, .5);

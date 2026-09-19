@@ -212,6 +212,49 @@ body[data-theme="synthwave"] .orb[data-state="idle"] { animation: glowPulse 2.6s
 .hint-label b { color: #fff; font-weight: 600; }
 .orb:hover .hint-label { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ========== PageAgent 主题开始（删除主题时删除本段）========== */
+/* PageAgent 主题：霓虹渐变边框动画（优先级最高） */
+body[data-theme="pageagent"] .orb {
+  position: relative;
+  border: none !important;
+  background: linear-gradient(45deg, #39b6ff, #bd45fb, #ff5733, #ffd600, #39b6ff) !important;
+  background-size: 400% 400% !important;
+  animation: pageagentBgFlow 4s ease infinite !important;
+}
+@keyframes pageagentBgFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+body[data-theme="pageagent"] .orb::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #39b6ff, #bd45fb, #ff5733, #ffd600, #39b6ff);
+  background-size: 300% 300%;
+  animation: pageagentFlow 3s ease infinite;
+  z-index: -1;
+  filter: blur(8px);
+}
+@keyframes pageagentFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+body[data-theme="pageagent"] .orb[data-state="idle"] {
+  animation: pageagentGlow 2.5s ease-in-out infinite;
+}
+@keyframes pageagentGlow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(57, 182, 255, 0.6), 0 0 24px rgba(57, 182, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(189, 69, 251, 0.8), 0 0 48px rgba(189, 69, 251, 0.4);
+  }
+}
+/* ========== PageAgent 主题结束 ========== */
+
 /* 浅色主题下提示条加深 */
 body[data-theme="light"] .hint-label { background: rgba(245, 247, 252, .92); color: rgba(30, 41, 59, .8); border-color: rgba(30, 41, 59, .12); }
 body[data-theme="light"] .hint-label b { color: #1e293b; }

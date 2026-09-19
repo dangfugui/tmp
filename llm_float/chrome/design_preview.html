@@ -295,6 +295,35 @@
   .g10 .orb[data-state="asr"] .icon-asr svg { animation: glowPulse 1.1s ease-in-out infinite; }
 
 
+<!-- ============ G12 PageAgent ============ -->
+<style>
+  .g12 .state-icon svg { filter: drop-shadow(0 0 6px currentColor); }
+  .g12 .orb { position: relative; border: none; }
+  .g12 .orb::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #39b6ff, #bd45fb, #ff5733, #ffd600, #39b6ff);
+    background-size: 300% 300%;
+    animation: g12flow 3s ease infinite;
+    z-index: -1;
+    filter: blur(6px);
+  }
+  @keyframes g12flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .g12 .orb[data-state="idle"] { animation: g12glow 2s ease-in-out infinite; }
+  @keyframes g12glow {
+    0%, 100% { box-shadow: 0 0 12px rgba(57, 182, 255, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(189, 69, 251, 0.7); }
+  }
+  .g12 .orb[data-state="chat"] .icon-chat svg { animation: bob 2s ease-in-out infinite; }
+  .g12 .orb[data-state="settings"] .icon-settings svg { animation: spin 4s linear infinite; transform-origin: center; }
+  .g12 .orb[data-state="tts"] .icon-tts svg { animation: glowPulse .8s ease-in-out infinite; }
+  .g12 .orb[data-state="asr"] .icon-asr svg { animation: glowPulse .9s ease-in-out infinite; }
   /* ---------- 聊天色盘（原聊天页颜色面板迁移） ---------- */
   .palette-section { margin-top: 40px; padding: 20px 22px 24px; border-radius: 18px; background: rgba(255,255,255,.045); border: 1.5px solid rgba(255,255,255,.1); }
   .palette-section h2 { font-size: 18px; margin: 0 0 4px; }
@@ -303,14 +332,14 @@
   .palette-title:not(:first-child) { margin-top: 14px; }
   .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
   .swatch { display: flex; align-items: center; gap: 7px; padding: 4px 9px 4px 4px; border-radius: 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
-  .chip { width: 22px; height: 22px; border-radius: 7px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+  .chip { width: 22px; height: 22px; min-width: 22px; border-radius: 7px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); display: inline-block; }
   .code { font-family: "Cascadia Mono", "Consolas", "DejaVu Sans Mono", "Noto Sans Mono CJK SC", monospace; font-size: 11.5px; color: #a8b1c4; }
 </style>
 </head>
 <body data-theme="glass">
 
   <h1>悬浮球风格选型</h1>
-  <div class="sub">共 <b>11 组</b>风格，每组展示五态：静默 / 聊天 / 设置 / 字幕 / 识别。点击卡片即可选中，选好告诉我编号即可。</div>
+  <div class="sub">共 <b>12 组</b>风格，每组展示五态：静默 / 聊天 / 设置 / 字幕 / 识别。点击卡片即可选中，选好告诉我编号即可。</div>
 
   <div id="picked">
     <span class="tag" id="picked-tag">—</span>
@@ -357,7 +386,7 @@
   </div>
 
   <div class="foot-note">
-    说明：以上 10 组悬浮球风格已全部落地为插件主题，在「设置 → 主题」下拉中即可切换（液态玻璃 / 极简扁平 / 霓虹赛博 / 马卡龙奶油 / 金属质感 / 活力糖果 / 莫兰迪雅致 / 复古合成波 / 自然绿意 / 黑白极简 / 品牌蓝）。
+    说明：以上 12 组悬浮球风格已全部落地为插件主题，在「设置 → 主题」下拉中即可切换（液态玻璃 / 极简扁平 / 霓虹赛博 / 马卡龙奶油 / 金属质感 / 活力糖果 / 莫兰迪雅致 / 复古合成波 / 自然绿意 / 黑白极简 / 品牌蓝 / PageAgent）。
   </div>
 
 <script src="design-preview.js"></script>

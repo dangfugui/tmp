@@ -583,24 +583,27 @@ async function dispatchTool(name, args) {
   // done 工具不显示在工具列表（只是结束信号）
   if (name === "done") return fn(args || {});
   const msgEl = addToolMsg(TOOL_ICONS[name] || "🔧", name, "执行中…");
+  const b = msgEl.querySelector(".bubble");
   const r = await fn(args || {});
   const icon = TOOL_ICONS[name] || "🔧";
   let summary = "✅";
-  if (r.error) summary = "❌ " + r.error;
-  else if (r.content !== undefined) {
-    // 短结果直接显示内容，长的只显示长度
-    const short = r.content.length <= 80;
-    summary = short ? "✅ " + r.content.replace(/\s+/g, " ").trim().slice(0, 80) : "✅ " + r.content.length + " 字符";
+  if (r.error) {
+    summary = "❌ " + r.error;
+  } else {
+    if (r.content !== undefined) {
+      // 短结果直接显示内容，长的只显示长度
+      const short = r.content.length <= 80;
+      summary = short ? "✅ " + r.content.replace(/\s+/g, " ").trim().slice(0, 80) : "✅ " + r.content.length + " 字符";
+    }
+    else if (r.matches) summary = "✅ " + r.matches.length + " 个匹配" + (r.matches.length <= 5 ? "（" + r.matches.slice(0, 5).join("、") + "）" : "");
+    else if (r.written !== undefined) summary = "✅ 写入 " + r.written + " 字符";
+    else if (r.data && r.data.value !== undefined && String(r.data.value).length <= 80) summary = "✅ " + String(r.data.value).replace(/\s+/g, " ").trim().slice(0, 80);
+    else if (r.data && r.data.selected) summary = "✅ " + (r.data.text || r.data.selected);
+    else if (r.data && r.data.clicked) summary = "✅ " + (r.data.tag || "");
+    else if (r.data && r.data.set) summary = "✅ " + (r.data.tag || "");
+    else if (r.data && r.data.waited) summary = "✅ " + r.data.waited + "ms";
+    else if (r.data && r.data.scrolled) summary = "✅ " + r.data.scrolled;
   }
-  else if (r.matches) summary = "✅ " + r.matches.length + " 个匹配" + (r.matches.length <= 5 ? "（" + r.matches.slice(0, 5).join("、") + "）" : "");
-  else if (r.written !== undefined) summary = "✅ 写入 " + r.written + " 字符";
-  else if (r.data && r.data.value !== undefined && String(r.data.value).length <= 80) summary = "✅ " + String(r.data.value).replace(/\s+/g, " ").trim().slice(0, 80);
-  else if (r.data && r.data.selected) summary = "✅ " + (r.data.text || r.data.selected);
-  else if (r.data && r.data.clicked) summary = "✅ " + (r.data.tag || "");
-  else if (r.data && r.data.set) summary = "✅ " + (r.data.tag || "");
-  else if (r.data && r.data.waited) summary = "✅ " + r.data.waited + "ms";
-  else if (r.data && r.data.scrolled) summary = "✅ " + r.data.scrolled;
-  const b = msgEl.querySelector(".bubble");
   if (b) b.textContent = icon + " " + name + "  →  " + summary;
   const detail = msgEl.querySelector(".tool-detail");
   if (detail) {

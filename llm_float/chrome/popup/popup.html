@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <title>LLM Float</title>
+  <link rel="stylesheet" href="../ui/theme.css" />
   <style>
     body {
       width: 230px;
       margin: 0;
       padding: 10px;
       font-family: "Segoe UI", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
-      background: #17191f;
-      color: #e6e9f2;
+      background: var(--bg-card, #17191f);
+      color: var(--text-primary, #e6e9f2);
     }
     .title {
       font-size: 13px;
@@ -23,45 +24,70 @@
       font-size: 12px;
       opacity: .75;
     }
+    .row {
+      display: flex;
+      gap: 6px;
+      margin: 4px 0;
+    }
     .btn {
       display: flex;
       align-items: center;
-      gap: 8px;
-      width: 100%;
+      justify-content: center;
+      gap: 6px;
+      flex: 1;
       box-sizing: border-box;
-      margin: 4px 0;
-      padding: 9px 10px;
+      padding: 7px 8px;
       border: 0;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, .07);
+      border-radius: 8px;
+      background: var(--chip-bg, rgba(255, 255, 255, .07));
       color: inherit;
-      font-size: 13px;
+      font-size: 12px;
       cursor: pointer;
-      text-align: left;
+      text-align: center;
     }
-    .btn:hover { background: rgba(255, 255, 255, .14); }
-    .btn:active { background: rgba(255, 255, 255, .20); }
-    .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+    .btn:hover { background: var(--bg-glass-strong, rgba(255, 255, 255, .14)); }
+    .btn:active { background: var(--bg-glass-strong, rgba(255, 255, 255, .20)); }
+    .btn.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .btn.full { width: 100%; }
+    .quick-links-row { display: flex; gap: 6px; margin: 4px 0; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
     .sep {
       height: 1px;
-      margin: 8px 4px;
-      background: rgba(255, 255, 255, .08);
+      margin: 6px 4px;
+      background: var(--divider, rgba(255, 255, 255, .08));
     }
   </style>
 </head>
 <body>
   <div class="title">LLM Float 悬浮助手</div>
   <div class="state" id="state">状态：--</div>
-  <button class="btn" id="btn-toggle">
-    <span class="dot" id="dot-toggle"></span><span id="label-toggle">开关本插件</span>
+  <div class="row">
+    <button class="btn" id="btn-toggle" style="flex:2">
+      <span class="dot" id="dot-toggle"></span><span id="label-toggle">开关本插件</span>
+    </button>
+    <button class="btn" id="btn-settings">
+      <span class="dot" style="background:var(--accent-2, #a78bfa)"></span>设置
+    </button>
+  </div>
+  <div class="sep"></div>
+  <button class="btn full" id="btn-chat">
+    <span class="dot" style="background:var(--accent, #60a5fa)"></span>聊天页
   </button>
   <div class="sep"></div>
-  <button class="btn" id="btn-tts">
-    <span class="dot" style="background:#60a5fa"></span>TTS 朗读 Demo
-  </button>
-  <button class="btn" id="btn-asr">
-    <span class="dot" style="background:#a78bfa"></span>ASR 识别 Demo
-  </button>
+  <div id="quick-links"></div>
+  <div class="sep"></div>
+  <div class="row">
+    <button class="btn" id="btn-tts">
+      <span class="dot" style="background:#ff9800"></span>TTS Demo
+    </button>
+    <button class="btn" id="btn-asr">
+      <span class="dot" style="background:#22c55e"></span>ASR Demo
+    </button>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>

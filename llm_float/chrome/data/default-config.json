@@ -32,6 +32,10 @@
       "mode": "qwenpaw"
     }
   ],
+  "quick_links": [
+    { "name": "百度", "url": "https://www.baidu.com" },
+    { "name": "Bing", "url": "https://www.bing.com" }
+  ],
   "active_profile_name": "默认",
   "tts_mode": "off",
   "tts_host": "http://{HOST}",

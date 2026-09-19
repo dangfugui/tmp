@@ -42,6 +42,10 @@ function initMain() {
     } else if (msg.type === "llm_demo") {
       // 工具栏 popup / 设置页 TTS / ASR demo：先停旧 TTS/ASR，再显示字幕气泡执行（互斥：开气泡自动关聊天窗）
       callCommand("runDemo", { demo: msg.demo });
+    } else if (msg.type === "open_chat") {
+      // 工具栏 popup：打开聊天窗口
+      callCommand("showChat", {});
+      pushOrbState("chat");
     }
   });
 }

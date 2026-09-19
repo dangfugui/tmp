@@ -624,6 +624,50 @@
   --orb-settings-shadow: 0 10px 24px rgba(174,243,255,.35), 0 3px 8px rgba(0,0,0,.15), inset 0 2px 3px rgba(255,255,255,.6);
 }
 
+/* ========== PageAgent 主题开始（删除主题时删除本段）========== */
+/* PageAgent（霓虹渐变 · 源自 page-agent UI） */
+[data-theme="pageagent"] {
+  --bg-card: rgba(2, 0, 60, 0.88);
+  --bg-glass: rgba(155, 155, 155, 0.04);
+  --bg-glass-strong: rgba(155, 155, 155, 0.08);
+  --titlebar-bg: rgba(155, 155, 155, 0.03);
+  --divider: rgba(155, 155, 155, 0.08);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(155, 155, 155, 0.6);
+  --accent: #39b6ff;
+  --accent-2: #bd45fb;
+  --accent-grad: linear-gradient(135deg, #39b6ff 0%, #bd45fb 100%);
+  --input-bg: rgba(255, 255, 255, 0.06);
+  --input-border: rgba(255, 255, 255, 0.12);
+  --focus-ring: rgba(57, 182, 255, 0.35);
+  --chip-bg: rgba(255, 255, 255, 0.06);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.4);
+
+  /* 悬浮球 · 霓虹渐变 */
+  --orb-idle-bg: linear-gradient(135deg, #39b6ff 0%, #bd45fb 100%);
+  --orb-idle-color: #fff;
+  --orb-idle-glow: rgba(57, 182, 255, 0.5);
+  --orb-idle-shadow: 0 0 12px rgba(57, 182, 255, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --orb-chat-bg: linear-gradient(135deg, #39b6ff 0%, #2196f3 100%);
+  --orb-chat-color: #fff;
+  --orb-chat-glow: rgba(57, 182, 255, 0.6);
+  --orb-chat-shadow: 0 0 16px rgba(57, 182, 255, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --orb-tts-bg: linear-gradient(135deg, #ff5733 0%, #ff9800 100%);
+  --orb-tts-color: #fff;
+  --orb-tts-glow: rgba(255, 87, 51, 0.5);
+  --orb-tts-shadow: 0 0 12px rgba(255, 87, 51, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --orb-asr-bg: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  --orb-asr-color: #fff;
+  --orb-asr-glow: rgba(34, 197, 94, 0.5);
+  --orb-asr-shadow: 0 0 12px rgba(34, 197, 94, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --orb-settings-bg: linear-gradient(135deg, #bd45fb 0%, #9333ea 100%);
+  --orb-settings-color: #fff;
+  --orb-settings-glow: rgba(189, 69, 251, 0.5);
+  --orb-settings-shadow: 0 0 12px rgba(189, 69, 251, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+/* ========== PageAgent 主题结束 ========== */
+
 /* 滚动条 */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }

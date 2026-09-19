@@ -133,6 +133,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       });
       return true;
     }
+    case "llm_open_chat": {
+      // 工具栏 popup：在【当前活动页面】打开聊天窗口
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        safeTabSend(tabs && tabs[0], { type: "open_chat" });
+        sendResponse({ ok: true });
+      });
+      return true;
+    }
     case "llm_bridge": {
       // chat iframe 的 LLM agent 工具命令（page_* 等）：转发到当前活动页 content（main.js llm_bridge → callCommand）
       (async () => {

@@ -6,7 +6,7 @@ const STORAGE_SCHEMA = [
     section: '基础',
     items: [
       { key: 'orb_opacity', label: '悬浮球透明度', type: 'number', value: 1.0, min: 0.2, max: 1.0, step: 0.05 },
-      { key: 'theme', label: '主题', type: 'select', value: 'glass', options: [['glass', '液态玻璃'], ['flat', '极简扁平'], ['neon', '霓虹赛博'], ['macaron', '马卡龙奶油'], ['metal', '金属质感'], ['candy', '活力糖果'], ['morandi', '莫兰迪雅致'], ['synthwave', '复古合成波'], ['green', '自然绿意'], ['mono', '黑白极简'], ['brand', '品牌蓝']] },
+      { key: 'theme', label: '主题', type: 'select', value: 'glass', options: [['glass', '液态玻璃'], ['flat', '极简扁平'], ['neon', '霓虹赛博'], ['macaron', '马卡龙奶油'], ['metal', '金属质感'], ['candy', '活力糖果'], ['morandi', '莫兰迪雅致'], ['synthwave', '复古合成波'], ['green', '自然绿意'], ['mono', '黑白极简'], ['brand', '品牌蓝'], ['pageagent', 'PageAgent']] },
       { key: 'orb_size', label: '悬浮球大小', type: 'number', value: 68, min: 40, max: 96, step: 1 },
       { key: 'agent_workdir', label: 'Agent 工作目录', type: 'agent_workdir', value: '' },
     ],
@@ -16,6 +16,14 @@ const STORAGE_SCHEMA = [
     items: [
       { key: 'chat_profiles', label: '', type: 'chat_profiles', value: [
         { chatName: '默认', urlRegex: '.*', baseUrl: 'http://localhost:8088', agentId: 'default', ttsTarget: '', token: '', mode: 'qwenpaw' },
+      ] },
+    ],
+  },
+  {
+    section: '常用地址',
+    items: [
+      { key: 'quick_links', label: '', type: 'quick_links', value: [
+        { name: '百度', url: 'https://www.baidu.com' },
       ] },
     ],
   },
@@ -194,13 +202,43 @@ function buildProfileRow(p) {
   return row;
 }
 
+function buildQuickLinkCard(link) {
+  link = link || {};
+  const card = document.createElement('div');
+  card.className = 'quick-link-row';
+  card.style.cssText = 'display:flex;gap:6px;align-items:center;padding:6px;border:1px solid var(--input-border);border-radius:8px;';
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.dataset.field = 'name';
+  nameInput.placeholder = '名称';
+  nameInput.value = link.name || '';
+  nameInput.style.cssText = 'flex:1;padding:5px 8px;border:1px solid var(--input-border);border-radius:6px;font-size:12px;background:var(--input-bg);color:var(--text-primary);';
+  const urlInput = document.createElement('input');
+  urlInput.type = 'text';
+  urlInput.dataset.field = 'url';
+  urlInput.placeholder = 'URL';
+  urlInput.value = link.url || '';
+  urlInput.style.cssText = 'flex:1;padding:5px 8px;border:1px solid var(--input-border);border-radius:6px;font-size:12px;background:var(--input-bg);color:var(--text-primary);';
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'profile-del';
+  del.title = '删除';
+  del.textContent = '×';
+  del.style.cssText = 'flex:none;';
+  del.addEventListener('click', () => card.remove());
+  card.appendChild(nameInput);
+  card.appendChild(urlInput);
+  card.appendChild(del);
+  return card;
+}
+
 function prepareField(item) {
   const field = document.createElement('div');
   field.className = 'field';
-  if (item.type === 'chat_profiles') field.classList.add('field-wide');
+  if (item.type === 'chat_profiles' || item.type === 'quick_links') field.classList.add('field-wide');
   const label = document.createElement('label');
   label.textContent = item.label || item.key;
-  if (item.type !== 'chat_profiles') field.appendChild(label);
+  if (item.type !== 'chat_profiles' && item.type !== 'quick_links') field.appendChild(label);
 
   const controlWrap = document.createElement('div');
 
@@ -280,6 +318,22 @@ function prepareField(item) {
     wrap.append(info, btn);
     controlWrap.appendChild(wrap);
     idbGet('agent_workdir').then((h) => { if (h) info.value = h.name; });
+  } else if (item.type === 'quick_links') {
+    controlWrap.innerHTML = '';
+    controlWrap.dataset.key = item.key;
+    controlWrap.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
+    (Array.isArray(item.value) ? item.value : []).forEach((link) => {
+      controlWrap.appendChild(buildQuickLinkCard(link));
+    });
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'profile-add';
+    add.textContent = '+ 添加地址';
+    add.style.cssText = 'grid-column:1/-1;';
+    add.addEventListener('click', () => {
+      controlWrap.insertBefore(buildQuickLinkCard({}), add);
+    });
+    controlWrap.appendChild(add);
   } else if (item.type === 'chat_profiles') {
     const wrap = document.createElement('div');
     wrap.className = 'profiles';
@@ -391,7 +445,13 @@ function readFormValues() {
     const field = currentSettings.flatMap(s => s.items || []).find(item => item.key === key);
     if (!field) return;
     let val;
-    if (field.type === 'chat_profiles') {
+    if (field.type === 'quick_links') {
+      val = Array.from(node.querySelectorAll('.quick-link-row')).map((row) => {
+        const name = row.querySelector('input[data-field="name"]')?.value || '';
+        const url = row.querySelector('input[data-field="url"]')?.value || '';
+        return { name, url };
+      }).filter((o) => o.name || o.url);
+    } else if (field.type === 'chat_profiles') {
       val = Array.from(node.querySelectorAll('.profile-row')).map((row) => {
         const obj = {};
         row.querySelectorAll('input[data-pk], select[data-pk]').forEach((inp) => { obj[inp.dataset.pk] = inp.value.trim(); });
