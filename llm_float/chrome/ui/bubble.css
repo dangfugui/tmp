@@ -61,12 +61,10 @@ body[data-theme="pageagent"][data-mode="asr"] { --bubble-glow: rgba(34, 197, 94,
 body[data-theme="pageagent"] .pill-card {
   position: relative;
   border: 3px solid transparent;
+  /* 用好看的渐变背景，透明度由 body.style.opacity 控制 */
   background:
-    var(--bg-card) padding-box,
+    linear-gradient(135deg, rgba(2, 0, 60, 0.95), rgba(20, 10, 80, 0.9)) padding-box,
     linear-gradient(to top right, #39b6ff, #bd45fb, #39b6ff) border-box;
-  /* backdrop-filter 性能优化：Mac 上太卡，暂时关掉 */
-  /* backdrop-filter: blur(26px) saturate(1.35);
-  -webkit-backdrop-filter: blur(26px) saturate(1.35); */
   animation: pageagentFlow 2s linear infinite;
   box-shadow:
     0 0 10px rgba(57, 182, 255, 0.6),
@@ -99,6 +97,31 @@ body[data-theme="synthwave"][data-mode="asr"] { --bubble-glow: rgba(74, 222, 128
 .pill-card {
   box-shadow: var(--orb-idle-shadow, 0 14px 30px rgba(0, 0, 0, .3)), 0 0 22px var(--bubble-glow, rgba(109, 124, 255, .4));
 }
+
+/* ========== 马卡龙主题：渐变边框（跟 PageAgent 一样的效果）========== */
+body[data-theme="macaron"] .pill-card {
+  position: relative;
+  border: 3px solid transparent;
+  background:
+    var(--bg-card) padding-box,
+    linear-gradient(to top right, #ffb3c1, #c9b6ff, #ffb3c1) border-box;
+  animation: pageagentFlow 2s linear infinite;
+  box-shadow:
+    0 0 10px rgba(255, 179, 193, 0.6),
+    0 0 20px rgba(201, 182, 255, 0.4);
+}
+body[data-theme="macaron"] .pill-card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 26px;
+  background: linear-gradient(to top right, #ffb3c1, #c9b6ff, #ffb3c1);
+  filter: blur(12px);
+  opacity: 0.4;
+  z-index: -1;
+  animation: pageagentFlow 2s linear infinite;
+}
+/* ========== 马卡龙主题结束 ========== */
 
 .mode {
   display: none;
