@@ -161,7 +161,7 @@ function renderMarkdown(src) {
       const isSep = /^\|?[\s:|-]+\|?$/.test(next) && next.includes("-");
       if (isSep) {
         const heads = line.slice(1, -1).split("|").map((c) => c.trim());
-        out.push('<table class="md-table"><thead><tr>' + heads.map((c) => "<th>" + c + "</th>").join("") + "</tr></thead><tbody>");
+        out.push('<div class="md-table-wrap"><table class="md-table"><thead><tr>' + heads.map((c) => "<th>" + c + "</th>").join("") + "</tr></thead><tbody>");
         i += 2;
         while (i < lines.length) {
           const r = lines[i].trim();
@@ -170,7 +170,7 @@ function renderMarkdown(src) {
           out.push("<tr>" + cells.map((c) => "<td>" + c + "</td>").join("") + "</tr>");
           i += 1;
         }
-        out.push("</tbody></table>");
+        out.push("</tbody></table></div>");
         continue;
       }
       // 不是表格则按普通段落

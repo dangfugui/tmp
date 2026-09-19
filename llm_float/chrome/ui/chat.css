@@ -110,6 +110,7 @@ body { padding: 0; }
 .messages {
   flex: 1 1 auto;
   overflow-y: auto;
+  overflow-x: hidden; /* 禁止整个聊天窗口横向滑动 */
   padding: 16px 14px 8px;
   display: flex;
   flex-direction: column;
@@ -138,6 +139,7 @@ body { padding: 0; }
   border: 1px solid var(--divider);
   border-top-left-radius: 5px;
   backdrop-filter: blur(8px);
+  width: 100%; /* 撑满父元素宽度，这样里面的表格才能横向滚动 */
 }
 
 .msg.user .bubble {
@@ -365,17 +367,28 @@ body { padding: 0; }
 .md-ul, .md-ol { margin: 6px 0; padding-left: 20px; }
 .md-ul li, .md-ol li { margin: 3px 0; }
 
+.md-table-wrap {
+  overflow-x: auto; /* 表格自己横向滚动，不撑开整个页面 */
+  width: 100%; /* 撑满父容器宽度 */
+  margin: 8px 0;
+  display: block;
+  white-space: normal; /* 覆盖父元素的 pre-wrap */
+  /* 确保表格内容超出时出现滚动条 */
+  max-width: 100%;
+}
 .md-table {
   border-collapse: collapse;
-  margin: 8px 0;
+  margin: 0;
   font-size: 12.5px;
-  width: 100%;
+  min-width: 100%; /* 最小撑满容器，内容多了会撑开触发横向滚动 */
+  white-space: nowrap; /* 表格内容不换行，超出才滚动 */
 }
 .md-table th, .md-table td {
   border: 1px solid var(--divider);
   padding: 5px 9px;
   text-align: left;
   vertical-align: top;
+  white-space: nowrap; /* 表格内容不换行，超出才滚动 */
 }
 .md-table th {
   background: var(--bg-glass-strong);
