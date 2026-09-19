@@ -1,16 +1,20 @@
 // LLM Float background
 // 职责：URL 匹配聊天配置、全局配置读写、消息路由（悬浮助手开关、TTS/ASR demo、options 打开、配置广播）
-const DEFAULTS = {
-  theme: "flat",
-  orb_size: 68,
-  orb_opacity: 1.0,
-  orb_enabled: true, // 悬浮助手总开关（工具栏 popup 切换）；新开页面默认开启
-  chat_profiles: [
-    { chatName: "默认", urlRegex: ".*", baseUrl: "http://localhost:8088", agentId: "default", ttsTarget: "", token: "", mode: "qwenpaw" }
-  ]
-};
+let DEFAULTS = {};
+
+// 从 data/default-config.json 加载默认配置
+async function loadDefaults() {
+  try {
+    const resp = await fetch(chrome.runtime.getURL("data/default-config.json"));
+    DEFAULTS = await resp.json();
+  } catch (e) {
+    // 加载失败用兜底
+    DEFAULTS = { theme: "flat", orb_size: 68, orb_opacity: 1.0, orb_enabled: true, chat_profiles: [] };
+  }
+}
 
 async function ensureDefaults() {
+  await loadDefaults();
   try {
     const got = await chrome.storage.local.get(Object.keys(DEFAULTS));
     const patch = {};
@@ -175,8 +179,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             if (!/^https?:/i.test(url)) { sendResponse({ ok: false, error: "url 需以 http/https 开头" }); return; }
             // navigate 前记住当前 profile，新页面沿用同一 agent（不根据新 URL 切换）
             try {
-              const got = await chrome.storage.local.get("active_profile_name");
-              await chrome.storage.local.set({ navigate_keep_profile: got.active_profile_name || "" });
+              const got = await chrome.storage.local.get(["active_profile_name", "chat_open"]);
+              await chrome.storage.local.set({
+                navigate_keep_profile: got.active_profile_name || "",
+                navigate_keep_chat: !!got.chat_open
+              });
             } catch (e) {}
             await chrome.tabs.update(tab.id, { url });
             sendResponse({ ok: true, data: { navigated: url } });

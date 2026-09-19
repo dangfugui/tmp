@@ -1,0 +1,182 @@
+{
+  "__defaults": {
+    "api_key": "",
+    "asr_auto_punct": true,
+    "asr_devices": [
+      "默认麦克风"
+    ],
+    "asr_engine": "whisper",
+    "asr_language": "auto",
+    "asr_sample_rate": "16000",
+    "asr_show_interim": true,
+    "asr_silence": 3,
+    "autostart": false,
+    "base_url": "https://api.example.com/v1",
+    "chat_profiles": [
+      {
+        "agentId": "default",
+        "baseUrl": "http://localhost:8088",
+        "chatName": "默认",
+        "token": "",
+        "ttsTarget": "",
+        "urlRegex": ".*"
+      },
+      {
+        "agentId": "QwenPaw_QA_Agent_0.2",
+        "baseUrl": "http://localhost:8088",
+        "chatName": "QA",
+        "token": "",
+        "ttsTarget": "#normalSugSearchUl li:nth-child(1)",
+        "urlRegex": "www.baidu.com"
+      },
+      {
+        "agentId": "default",
+        "baseUrl": "http://localhost:8088",
+        "chatName": "bing",
+        "token": "",
+        "ttsTarget": ".b_searchbox",
+        "urlRegex": "www.bing.com"
+      }
+    ],
+    "context_turns": 10,
+    "data_dir": "./data",
+    "default_mode": "chat",
+    "features": [
+      "chat",
+      "subtitle"
+    ],
+    "hotkey_asr": "Ctrl+Alt+R",
+    "hotkey_chat": "Ctrl+Alt+Space",
+    "language": "zh",
+    "log_level": "INFO",
+    "max_tokens": 2048,
+    "model": "gpt-4o",
+    "orb_opacity": 0.5,
+    "orb_size": 68,
+    "proxy": "",
+    "stream": true,
+    "system_prompt": "你是一个有用的桌面助手，回答尽量简洁。",
+    "temperature": 0.7,
+    "theme": "neon",
+    "tts_align": "center",
+    "tts_api_key": "API_KEY",
+    "tts_auto_hide": true,
+    "tts_font_size": 18,
+    "tts_hold": 3,
+    "tts_host": "wss://{HOST}/v1/audio/speech/stream",
+    "tts_instructions": "",
+    "tts_language": "",
+    "tts_lines": "2",
+    "tts_max_chars": 24,
+    "tts_model": "qwen3-tts",
+    "tts_response_format": "pcm",
+    "tts_sample_rate": 24000,
+    "tts_speed": 0,
+    "tts_voice": "vivian"
+  },
+  "active_profile_name": "默认",
+  "api_key": "",
+  "asr_api_key": "1",
+  "asr_auto_punct": true,
+  "asr_devices": [
+    "默认麦克风"
+  ],
+  "asr_engine": "whisper",
+  "asr_host": "http://{HOST}/v1/audio/speech/stream",
+  "asr_language": "auto",
+  "asr_mode": "http",
+  "asr_model": "qwen3-asr",
+  "asr_sample_rate": "16000",
+  "asr_show_interim": true,
+  "asr_silence": 3,
+  "autostart": false,
+  "base_url": "https://api.example.com/v1",
+  "chat_history": [
+    {
+      "role": "bot",
+      "text": "你好，我是 AI 助手 👋\n输入消息即可开始对话。"
+    }
+  ],
+  "chat_open": true,
+  "chat_profiles": [
+    {
+      "agentId": "default",
+      "baseUrl": "http://localhost:8088",
+      "chatName": "默认",
+      "mode": "qwenpaw",
+      "token": "",
+      "ttsTarget": "",
+      "urlRegex": ".*"
+    },
+    {
+      "agentId": "QwenPaw_QA_Agent_0.2",
+      "baseUrl": "http://localhost:8088",
+      "chatName": "QA",
+      "mode": "qwenpaw",
+      "token": "",
+      "ttsTarget": "#normalSugSearchUl li:nth-child(1)",
+      "urlRegex": "www.baidu.com"
+    },
+    {
+      "agentId": "default",
+      "baseUrl": "http://localhost:8088",
+      "chatName": "bing",
+      "mode": "qwenpaw",
+      "token": "",
+      "ttsTarget": ".b_searchbox",
+      "urlRegex": "www.bing.com"
+    },
+    {
+      "agentId": "deepseek-flash",
+      "baseUrl": "https://api.deepseek.com/chat/completions",
+      "chatName": "deepseek",
+      "mode": "llm",
+      "token": "sk-",
+      "ttsTarget": "",
+      "urlRegex": "deepseek.com"
+    }
+  ],
+  "context_turns": 10,
+  "data_dir": "./data",
+  "default_mode": "chat",
+  "features": [
+    "chat",
+    "subtitle"
+  ],
+  "hotkey_asr": "Ctrl+Alt+R",
+  "hotkey_chat": "Ctrl+Alt+Space",
+  "language": "zh",
+  "log_level": "INFO",
+  "max_tokens": 2048,
+  "model": "gpt-4o",
+  "orb_closed_by_user": true,
+  "orb_enabled": true,
+  "orb_opacity": 1,
+  "orb_pos": {
+    "bottom": 111,
+    "right": 112
+  },
+  "orb_size": 68,
+  "proxy": "",
+  "sec_tts_expanded": true,
+  "stream": true,
+  "system_prompt": "你是一个有用的桌面助手，回答尽量简洁。",
+  "temperature": 0.7,
+  "theme": "neon",
+  "tts_align": "center",
+  "tts_api_key": "API_KEY",
+  "tts_auto_hide": true,
+  "tts_font_size": 18,
+  "tts_hold": 3,
+  "tts_host": "wss://{HOST}/v1/audio/speech/stream",
+  "tts_instructions": "",
+  "tts_language": "",
+  "tts_lines": "2",
+  "tts_max_chars": 24,
+  "tts_mode": "http",
+  "tts_model": "qwen3-tts",
+  "tts_response_format": "pcm",
+  "tts_sample_rate": 24000,
+  "tts_speed": 0,
+  "tts_voice": "vivian"
+}

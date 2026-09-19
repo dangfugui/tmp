@@ -445,31 +445,36 @@ function saveSettings() {
   });
 }
 
-function resetSettings() {
-  // 恢复"默认快照"（首次打开设置页时固化的当前配置）；无快照时回退 schema 内置默认
-  chrome.storage.local.get('__defaults', (d) => {
-    const snap = d.__defaults || {};
-    const defaults = {};
-    STORAGE_SCHEMA.forEach(s => {
-      (s.items || []).forEach(i => { defaults[i.key] = snap[i.key] !== undefined ? snap[i.key] : i.value; });
-      if (s.segmentKey) defaults[s.segmentKey] = snap[s.segmentKey] !== undefined ? snap[s.segmentKey] : (s.segmentDefault || '');
-    });
-    chrome.storage.local.set(defaults, () => {
-      const merged = mergeWithStorage(STORAGE_SCHEMA, defaults);
-      renderSettings(merged);
-      const theme = merged.flatMap(s => s.items || []).find(i => i.key === 'theme');
-      if (theme) applyTheme(theme.value);
-      broadcastConfig();
-      showToast('已恢复默认');
-    });
-  });
+async function resetSettings() {
+  // 从 data/default-config.json 读取默认配置，填入表单（点击保存才生效）
+  try {
+    const resp = await fetch(chrome.runtime.getURL("data/default-config.json"));
+    const defaults = await resp.json();
+    // 把默认值填入表单
+    for (const [k, v] of Object.entries(defaults)) {
+      const el = document.querySelector(`[data-key="${k}"]`);
+      if (!el) continue;
+      if (el.type === "checkbox") el.checked = !!v;
+      else el.value = typeof v === "object" ? JSON.stringify(v) : v;
+    }
+    showToast('已填入默认配置，点击保存生效');
+  } catch (e) {
+    showToast('恢复默认失败: ' + (e.message || e));
+  }
 }
 
 /* ---------- 导入导出 ---------- */
 async function exportSettings() {
   try {
     const all = await chrome.storage.local.get(null);
-    const blob = new Blob([JSON.stringify(all, null, 2)], { type: "application/json" });
+    // 过滤掉聊天历史（chat_history_*）和临时标记，只导出配置
+    const cfg = {};
+    for (const [k, v] of Object.entries(all)) {
+      if (k.startsWith("chat_history_")) continue;
+      if (k === "navigate_keep_profile" || k === "navigate_keep_chat") continue;
+      cfg[k] = v;
+    }
+    const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

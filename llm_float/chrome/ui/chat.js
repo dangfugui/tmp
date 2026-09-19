@@ -276,6 +276,40 @@ function addMessage(role, text) {
 }
 
 
+let askUserCb = null;
+function onAskUser(question, options, cb) {
+  // 在聊天窗显示问题，等用户输入
+  addMessage("bot", "❓ " + question, true);
+  // 显示快捷选项按钮（用主题 CSS 变量，跟随主题变化）
+  if (options && options.length) {
+    const optDiv = document.createElement("div");
+    optDiv.className = "ask-options";
+    optDiv.style.cssText = "display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;";
+    for (const opt of options) {
+      const btn = document.createElement("button");
+      btn.textContent = opt;
+      btn.style.cssText = "padding:6px 14px;border:1px solid var(--accent);border-radius:16px;background:color-mix(in srgb, var(--accent) 15%, transparent);color:var(--accent);cursor:pointer;font-size:13px;transition:all .2s;";
+      btn.addEventListener("mouseenter", () => { btn.style.background = "var(--accent)"; btn.style.color = "var(--text-primary)"; });
+      btn.addEventListener("mouseleave", () => { btn.style.background = "color-mix(in srgb, var(--accent) 15%, transparent)"; btn.style.color = "var(--accent)"; });
+      btn.addEventListener("click", () => {
+        const cb = askUserCb;
+        askUserCb = null;
+        inputEl.placeholder = "输入消息...";
+        optDiv.remove();
+        addMessage("user", opt);
+        cb && cb(opt);
+      });
+      optDiv.appendChild(btn);
+    }
+    messagesEl.appendChild(optDiv);
+    scrollToEnd();
+  }
+  inputEl.placeholder = "回答问题...";
+  inputEl.focus();
+  askUserCb = cb;
+}
+window.assistant.onAskUser = onAskUser;
+
 function showTyping() {
   const msg = document.createElement("div");
   msg.className = "msg bot";
@@ -508,6 +542,13 @@ function abortChat() {
 let llmMessages = [];
 let llmRound = 0;
 const MAX_TOOL_ROUNDS = 20;
+const SYSTEM_PROMPT = `你是一个网页助手，可以帮用户操作当前页面。
+规则：
+1. 优先用 web_fetch 后台抓取资料，不要随便 navigate（navigate 会跳页，结束当前对话）
+2. 操作前先 page_get_info 了解页面内容
+3. 完成任务后调用 done 工具结束，不要继续空转
+4. 遇到验证码/登录等无法解决的问题，用 ask_user 问用户
+5. 用中文回复`;
 
 /* agent 工具已迁到 ui/agent.js */
 /* ---- 工具执行与气泡展示 ---- */
@@ -539,6 +580,8 @@ const TOOL_ICONS = {
 async function dispatchTool(name, args) {
   const fn = AGENT_TOOLS[name];
   if (!fn) return { error: "unknown tool: " + name };
+  // done 工具不显示在工具列表（只是结束信号）
+  if (name === "done") return fn(args || {});
   const msgEl = addToolMsg(TOOL_ICONS[name] || "🔧", name, "执行中…");
   const r = await fn(args || {});
   const icon = TOOL_ICONS[name] || "🔧";
@@ -581,10 +624,25 @@ async function runLlmLoop() {
     if (++llmRound > MAX_TOOL_ROUNDS) { finishReply("工具调用轮数超限，已停止"); return; }
     const next = await oneLlmCall();
     if (!next) return;
+    // 检查是否调用了 done
+    const lastTool = llmMessages[llmMessages.length - 1];
+    if (lastTool && lastTool.role === "assistant" && lastTool.tool_calls) {
+      const doneCall = lastTool.tool_calls.find((t) => t.function && t.function.name === "done");
+      if (doneCall) {
+        try {
+          const args = JSON.parse(doneCall.function.arguments || "{}");
+          if (args.text) finishReply(args.text);
+          else finishReply();
+        } catch (e) { finishReply(); }
+        return;
+      }
+    }
   }
 }
 
+let llmCallStart = 0;
 async function oneLlmCall() {
+  llmCallStart = Date.now();
   await refreshProfileCache();
   const cfg = currentProfile();
   // 直接用设置里填的完整接口地址，不做任何拼接/猜测
@@ -594,7 +652,7 @@ async function oneLlmCall() {
   const headers = { "Content-Type": "application/json", "Authorization": "Bearer " + cfg.token };
   const body = {
     model: cfg.agentId || "qwen-plus",
-    messages: llmMessages,
+    messages: [{ role: "system", content: SYSTEM_PROMPT }, ...llmMessages],
     stream: true,
     tools: AGENT_TOOL_DEFS,
     tool_choice: "auto",
@@ -684,6 +742,20 @@ async function oneLlmCall() {
 function send() {
   const text = inputEl.value.trim();
   if (!text || busy) return;
+
+  // ask_user 模式：把回答返回给 LLM，不走普通发送流程
+  if (askUserCb) {
+    const cb = askUserCb;
+    askUserCb = null;
+    inputEl.placeholder = "输入消息...";
+    const optDiv = document.querySelector(".ask-options");
+    if (optDiv) optDiv.remove();
+    addMessage("user", text);
+    inputEl.value = "";
+    autoResize();
+    cb(text);
+    return;
+  }
 
   addMessage("user", text);
   inputEl.value = "";

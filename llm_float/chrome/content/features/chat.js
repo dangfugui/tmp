@@ -5,14 +5,18 @@ registerPanel({
   cls: "llm-float-chat-frame", exclusive: true,
   init: { right: (MARGIN + ORB_WIN) + "px", bottom: (MARGIN + ORB_WIN + 12) + "px", left: "auto", top: "auto" },
   onLoad: () => { pushThemeAll(); pushProfiles(); },
-  onOpen: () => { pushChat("onChatFocus", {}); setUi({ chat: { open: true, busy: false } }); reportToBridge("chatOpened", {}); try { chrome.storage.local.set({ chat_open: true }); } catch (e) {} },
-  onClose: () => { setUi({ chat: { open: false, busy: false } }); reportToBridge("chatClosed", {}); try { chrome.storage.local.set({ chat_open: false }); } catch (e) {} },
+  onOpen: () => { pushChat("onChatFocus", {}); setUi({ chat: { open: true, busy: false } }); reportToBridge("chatOpened", {}); },
+  onClose: () => { setUi({ chat: { open: false, busy: false } }); reportToBridge("chatClosed", {}); },
 });
 
-/* 导航后自动恢复 chat 窗口（页面刷新后 content 重新注入） */
+/* 只有 navigate 跳转过来才自动打开 chat 窗口（普通刷新/手动打开不自动开） */
 try {
-  chrome.storage.local.get({ chat_open: false }, (d) => {
-    if (d.chat_open) openPanel("chat");
+  chrome.storage.local.get({ navigate_keep_chat: false }, (d) => {
+    if (d.navigate_keep_chat) {
+      openPanel("chat");
+      // 用完清掉，下次刷新不再自动开
+      try { chrome.storage.local.set({ navigate_keep_chat: false }); } catch (e) {}
+    }
   });
 } catch (e) { /* 忽略 */ }
 

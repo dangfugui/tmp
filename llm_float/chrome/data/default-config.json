@@ -1,0 +1,48 @@
+{
+  "theme": "flat",
+  "orb_size": 68,
+  "orb_opacity": 1.0,
+  "orb_enabled": true,
+  "chat_profiles": [
+    {
+      "chatName": "默认",
+      "urlRegex": ".*",
+      "baseUrl": "http://localhost:8088",
+      "agentId": "default",
+      "token": "",
+      "ttsTarget": "",
+      "mode": "qwenpaw"
+    },
+    {
+      "chatName": "QA",
+      "urlRegex": "www.baidu.com",
+      "baseUrl": "http://localhost:8088",
+      "agentId": "QwenPaw_QA_Agent_0.2",
+      "token": "",
+      "ttsTarget": "#normalSugSearchUl li:nth-child(1)",
+      "mode": "qwenpaw"
+    },
+    {
+      "chatName": "bing",
+      "urlRegex": "www.bing.com",
+      "baseUrl": "http://localhost:8088",
+      "agentId": "default",
+      "token": "",
+      "ttsTarget": ".b_searchbox",
+      "mode": "qwenpaw"
+    }
+  ],
+  "active_profile_name": "默认",
+  "tts_mode": "off",
+  "tts_host": "http://{HOST}",
+  "tts_model": "qwen3-tts",
+  "tts_voice": "vivian",
+  "tts_language": "",
+  "tts_speed": 0,
+  "tts_instructions": "",
+  "asr_mode": "off",
+  "asr_host": "http://{HOST}",
+  "asr_model": "qwen3-asr",
+  "asr_language": "auto",
+  "asr_show_interim": true
+}

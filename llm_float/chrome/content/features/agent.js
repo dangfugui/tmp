@@ -4,7 +4,19 @@
 /* 页面工具命令（agent LLM 模式：page_* 工具经此执行，操作当前网页） */
 registerCommand("getPageInfo", () => {
   const t = ((document.body && document.body.innerText) || "").replace(/\s+/g, " ").trim();
-  return { ok: true, data: { url: location.href, title: document.title, text: t.slice(0, 3000) } };
+  // 提取可交互元素（带 index）
+  const interactive = [];
+  let idx = 0;
+  const els = document.querySelectorAll("button, input, select, textarea, a[href], [role=button]");
+  for (const el of els) {
+    if (idx >= 30) break; // 最多 30 个，省 token
+    const tag = el.tagName.toLowerCase();
+    const text = (el.innerText || el.value || el.getAttribute("aria-label") || "").trim().slice(0, 50);
+    if (!text) continue;
+    idx++;
+    interactive.push({ index: idx, tag, text });
+  }
+  return { ok: true, data: { url: location.href, title: document.title, text: t.slice(0, 2000), elements: interactive } };
 });
 registerCommand("querySelector", (p) => {
   try {
@@ -16,8 +28,14 @@ registerCommand("querySelector", (p) => {
 });
 registerCommand("execJs", (p) => {
   try {
-    const fn = new Function((p && p.code) || "");
+    const code = (p && p.code) || "";
+    // 支持 async/await 和返回 Promise
+    const fn = new Function("return (" + code + ")");
     const r = fn();
+    if (r && typeof r.then === "function") {
+      return r.then((v) => ({ ok: true, data: { result: JSON.stringify(v) } }))
+             .catch((e) => ({ ok: false, error: String((e && e.message) || e) }));
+    }
     return { ok: true, data: { result: JSON.stringify(r) } };
   } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
 });

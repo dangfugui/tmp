@@ -18,6 +18,8 @@ const AGENT_TOOL_DEFS = [
   { type: "function", function: { name: "page_get_html", description: "【读网页 HTML】读取元素的 outerHTML（默认 body），最多 5000 字符", parameters: { type: "object", properties: { selector: { type: "string", description: "CSS 选择器，默认 body" } } } } },
   { type: "function", function: { name: "page_select", description: "【选下拉框】选择当前网页 select 下拉框的选项（优先按 option value 匹配，没匹配到按 option 文本匹配）", parameters: { type: "object", properties: { selector: { type: "string", description: "select 元素的 CSS 选择器" }, value: { type: "string", description: "要选的 option 的 value 或文本" } }, required: ["selector", "value"] } } },
   { type: "function", function: { name: "web_fetch", description: "【抓网页】后台 fetch 任意 URL，返回页面纯文本内容（类似 web 搜索/抓取，不需要当前页面跳转）。查资料、读文档、抓网页内容用这个。注意：如果 web_fetch 和 navigate 都能实现需求，优先用 web_fetch，因为它是后台访问，不影响当前页面", parameters: { type: "object", properties: { url: { type: "string", description: "完整 URL（http/https 开头）" } }, required: ["url"] } } },
+  { type: "function", function: { name: "done", description: "【完成】任务完成后调用这个工具结束循环。text 是给用户的最终回复（简洁明了）。success 表示任务是否成功完成", parameters: { type: "object", properties: { text: { type: "string", description: "给用户的最终回复" }, success: { type: "boolean", description: "任务是否成功完成，默认 true" } }, required: ["text"] } } },
+  { type: "function", function: { name: "ask_user", description: "【问用户】需要用户更多信息或遇到无法解决的问题（如验证码、登录）时，用这个工具问用户。可以提供 options 快捷选项", parameters: { type: "object", properties: { question: { type: "string", description: "要问用户的问题" }, options: { type: "array", items: { type: "string" }, description: "快捷选项按钮（可选，最多 4 个）" } }, required: ["question"] } } },
 ];
 
 const AGENT_TOOLS = {
@@ -37,6 +39,12 @@ const AGENT_TOOLS = {
   page_get_html: async (p) => bridgeCmd("page_get_html", { selector: (p && p.selector) || "" }),
   page_select: async (p) => bridgeCmd("page_select", { selector: (p && p.selector) || "", value: (p && p.value) || "" }),
   web_fetch: async (p) => bridgeCmd("web_fetch", { url: (p && p.url) || "" }),
+  done: async (p) => ({ done: true, text: (p && p.text) || "", success: p ? (p.success !== false) : true }),
+  ask_user: async (p) => new Promise((resolve) => {
+    const q = (p && p.question) || "";
+    const opts = (p && Array.isArray(p.options)) ? p.options.slice(0, 4) : [];
+    window.assistant.onAskUser && window.assistant.onAskUser(q, opts, (ans) => resolve({ answer: ans }));
+  }),
 };
 
 /* ---- 页面工具：经 background 转发到当前页 content 命令表 ---- */
