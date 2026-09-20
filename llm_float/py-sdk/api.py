@@ -40,7 +40,12 @@ class FloatSDK:
         async def handler(ws):
             self._ext = ws
             self._connected.set()
-            log.info("扩展已连接")
+            log.info("扩展已连接，SDK 版本: sdk-1.0.0")
+            # 发送 SDK 版本号
+            try:
+                await ws.send(json.dumps({ "cmd": "ping", "version": "sdk-1.0.0" }))
+            except Exception:
+                pass
             try:
                 async for raw in ws:
                     try:
@@ -113,6 +118,10 @@ class FloatSDK:
     async def getTabs(self):
         """列出全部可注入页面 [{id,title,url}]，供多页面演示遍历。"""
         return await self._call("getTabs")
+
+    async def getActiveTab(self):
+        """获取当前活动页面 {id,title,url}，无则返回 None。"""
+        return await self._call("getActiveTab")
 
     async def setEnabled(self, enabled=True):
         return await self._call("setEnabled", {"enabled": enabled})

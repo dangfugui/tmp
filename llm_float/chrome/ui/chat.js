@@ -558,9 +558,14 @@ async function qwenChat(text) {
 function abortChat() {
   // 标准 OpenAI 停止 = abort 流式请求；已收到的文本保留，由 AbortError 回调的 finishReply() 渲染成最终气泡
   if (chatAbort) { try { chatAbort.abort(); } catch (e) { /* 忽略 */ } }
+  // 立即更新 UI，不等待网络请求返回
   removeTyping();
   setBusy(false);
   inputEl.focus();
+  // 如果当前有 bot 气泡，立即收尾渲染
+  if (botEl && pendingBotText !== null) {
+    finishReply();
+  }
 }
 
 /* ================= LLM 模式（OpenAI 兼容 + 轻量 agent 工具） ================= */

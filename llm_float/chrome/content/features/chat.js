@@ -27,7 +27,10 @@ registerCommand("showChat", (p) => {
 });
 registerCommand("hideChat", () => { closePanel("chat"); pushOrbState("idle"); return { ok: true }; });
 registerCommand("sendText", (p) => { pushChat("sendText", { text: p && p.text }); return { ok: true }; });
-registerCommand("stopChat", () => { pushChat("stopChat", {}); return { ok: true }; });
+registerCommand("stopChat", () => {
+  try { pushChat("stopChat", {}); } catch (e) { console.warn("[chat] stopChat pushChat 失败:", e); }
+  return { ok: true };
+});
 
 registerPanelMessage("chat", (kind, data) => {
   if (data.action === "hide") { closePanel("chat"); pushOrbState("idle"); }

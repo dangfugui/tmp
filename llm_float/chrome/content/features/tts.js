@@ -25,7 +25,9 @@
       chrome.storage.local.get(["chat_profiles", "active_profile_name"], (d) => {
         const profiles = d.chat_profiles || [];
         const name = d.active_profile_name || "";
-        const profile = profiles.find((p) => p.chatName === name) || profiles[0] || {};
+        let profile = window.llmUtils.matchProfile(location.href, profiles);
+        // 没匹配到就用当前激活的 profile
+        if (!profile) profile = profiles.find((p) => p.chatName === name) || profiles[profiles.length - 1] || {};
         const target = (profile.ttsTarget || "").trim();
         if (ttsTargetId === target && ttsTimer) return; // 无变化
         stopTtsTarget();
@@ -77,7 +79,7 @@
 
   // HOST 容错：允许误填完整接口路径（如 .../v1/audio/speech/stream），剥到根地址再拼接
   function normalizeHost(h) {
-    return String(h || "").trim().replace(/\/+$/, "").replace(/\/(v1\/audio\/(speech\/stream|speech|transcriptions))$/i, "");
+    return String(h || "").trim().replace(/\/+$/, "");
   }
 
   // HOST 必须带协议（如 wss://llm.nucc.com）；不自动补协议，未带协议视为无效由调用方回退

@@ -52,8 +52,9 @@ async def main():
             print("-> showChat(send=...) 打开聊天窗并发送一条消息")
             await sdk.showChat(send="你好，请用一句话介绍自己", tabId=tid)
             await asyncio.sleep(SLEEP + 1)  # 观察聊天窗与流式回复（无后端会显示错误提示，属正常）
-            print("-> stopChat 停止 AI 回复")
+            print("-> hideChat 收起聊天窗")
             await sdk.stopChat(tabId=tid)
+            await sdk.hideChat(tabId=tid)
             await asyncio.sleep(1)
 
             print("-> speakText(...) 语音播报字幕")

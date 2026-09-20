@@ -14,6 +14,7 @@
       "agentId": "default",
       "token": "",
       "ttsTarget": "",
+      "inputSelector": "",
       "mode": "qwenpaw"
     },
     {
@@ -23,6 +24,7 @@
       "agentId": "QwenPaw_QA_Agent_0.2",
       "token": "",
       "ttsTarget": "#normalSugSearchUl li:nth-child(1)",
+      "inputSelector": "#chat-textarea",
       "mode": "qwenpaw"
     },
     {
@@ -32,6 +34,7 @@
       "agentId": "default",
       "token": "",
       "ttsTarget": ".b_searchbox",
+      "inputSelector": "",
       "mode": "qwenpaw"
     },
     {
@@ -41,6 +44,7 @@
       "agentId": "deepseek-flash",
       "token": "sk-",
       "ttsTarget": "",
+      "inputSelector": "",
       "mode": "llm"
     }
   ],
@@ -49,28 +53,28 @@
     { "name": "baidu", "url": "baidu.com" }
   ],
   "active_profile_name": "默认",
-  "tts_mode": "off",
-  "tts_host": "wss://{HOST}/v1/audio/speech/stream",
-  "tts_model": "qwen3-tts",
-  "tts_voice": "vivian",
-  "tts_language": "",
-  "tts_speed": 0,
-  "tts_instructions": "",
-  "tts_font_size": 18,
-  "tts_lines": "2",
-  "tts_max_chars": 24,
-  "tts_hold": 3,
-  "tts_align": "center",
-  "tts_auto_hide": true,
-  "tts_sample_rate": 24000,
-  "tts_response_format": "pcm",
-  "asr_mode": "off",
-  "asr_host": "http://{HOST}/v1/audio/speech/stream",
+  "tts_mode": "http",
+  "tts_hide_time": 1,
+  "tts_ws_host": "",
+  "tts_ws_api_key": "",
+  "tts_ws_model": "qwen3-tts",
+  "tts_ws_voice": "vivian",
+  "tts_ws_language": "zh",
+  "tts_ws_speed": 1,
+  "tts_ws_instructions": "",
+  "tts_http_host": "",
+  "tts_http_api_key": "",
+  "tts_http_model": "qwen3-tts",
+  "tts_http_voice": "vivian",
+  "tts_http_response_format": "pcm",
+  "tts_http_sample_rate": 24000,
+  "tts_http_language": "zh",
+  "tts_http_speed": 1,
+  "tts_http_instructions": "",
+  "asr_mode": "http",
+  "asr_host": "",
+  "asr_api_key": "",
   "asr_model": "qwen3-asr",
-  "asr_language": "auto",
-  "asr_show_interim": true,
-  "asr_silence": 3,
-  "asr_sample_rate": "16000",
-  "asr_auto_punct": true,
-  "asr_devices": ["默认麦克风"]
+  "asr_language": "zh",
+  "asr_send_delay": 2
 }

@@ -18,7 +18,7 @@
 
   // HOST 容错：允许误填完整接口路径（如 .../v1/audio/transcriptions），剥到根地址再拼接
   function normalizeHost(h) {
-    return String(h || "").trim().replace(/\/+$/, "").replace(/\/(v1\/audio\/(speech\/stream|speech|transcriptions))$/i, "");
+    return String(h || "").trim().replace(/\/+$/, "");
   }
 
   function getAsrConfig() {
@@ -76,10 +76,45 @@
     if (!t) return;
     stopAsr();
     pushOrbState("idle");
-    setTimeout(() => {
-      callCommand("showChat", {});
-      pushChat("sendText", { text: t });
-    }, 120);
+    // 先从 storage 读取 chat_profiles 配置，检查当前页面有没有配置输入框定位
+    chrome.storage.local.get(["chat_profiles"], (data) => {
+      const profiles = data.chat_profiles || [];
+      console.log("[llm-float][asr] 输入定位检查: chat_profiles 数量=" + profiles.length);
+      const matchedProfile = window.llmUtils.matchProfile(location.href, profiles);
+      if (matchedProfile) {
+        console.log("[llm-float][asr] 输入定位检查: 匹配到配置=" + matchedProfile.chatName + ", inputSelector='" + (matchedProfile.inputSelector || "") + "'");
+      } else {
+        console.log("[llm-float][asr] 输入定位检查: 没匹配到任何配置, 当前URL=" + curUrl);
+      }
+      if (matchedProfile && matchedProfile.inputSelector) {
+        // 定位到输入框，输入结果，敲回车
+        const el = document.querySelector(matchedProfile.inputSelector);
+        if (el) {
+          console.log("[llm-float][asr] 输入定位检查: 找到元素，开始输入");
+          el.focus();
+          // 模拟输入
+          if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+            el.value = t;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            // 敲回车
+            setTimeout(() => {
+              el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+              // 输入完成关闭 ASR 弹窗
+              closePanel("bubble");
+            }, 100);
+          }
+          return;
+        } else {
+          console.log("[llm-float][asr] 输入定位检查: 没找到元素, selector=" + matchedProfile.inputSelector);
+        }
+      }
+      // 没找到输入框，就发到聊天页面
+      console.log("[llm-float][asr] 输入定位检查: 发到聊天页面");
+      setTimeout(() => {
+        callCommand("showChat", {});
+        pushChat("sendText", { text: t });
+      }, 120);
+    });
   }
 
   // 入口：悬浮球右键 / SDK startAsr —— 按设置的模式分流
@@ -187,7 +222,11 @@
           showAsrFinal(text);
           const delay = Number(cfg.asr_send_delay) || 2;
           setTimeout(() => sendResultToChat(text), delay * 1000);
-        }).catch((e) => showAsrFail("识别失败：" + (e && e.message ? e.message : String(e))));
+        }).catch((e) => {
+          console.warn("[llm-float][asr] 识别失败：" + (e && e.message ? e.message : String(e)));
+          // 失败也继续走流程，把结果标记成"语音识别失败"，方便测试后续流程
+          sendResultToChat("【语音识别失败】");
+        });
       } else {
         console.warn("[llm-float][asr] HOST 未配置或未带 http(s):// 协议，未发起识别");
         showAsrFail("未配置 ASR 服务（设置 → 识别（ASR）分组填 HOST）");

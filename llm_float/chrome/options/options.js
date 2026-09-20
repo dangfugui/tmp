@@ -19,7 +19,7 @@ const STORAGE_SCHEMA = [
     section: '聊天（网址匹配）',
     items: [
       { key: 'chat_profiles', label: '', type: 'chat_profiles', value: [
-        { chatName: '默认', urlRegex: '.*', baseUrl: 'http://localhost:8088', agentId: 'default', ttsTarget: '', token: '', mode: 'qwenpaw' },
+        { chatName: '默认', urlRegex: '.*', baseUrl: 'http://localhost:8088', agentId: 'default', ttsTarget: '', inputSelector: '', token: '', mode: 'qwenpaw' },
       ] },
     ],
   },
@@ -167,7 +167,8 @@ function buildProfileRow(p) {
     ['urlRegex', '网址正则', p.urlRegex || ''],
     ['baseUrl', 'Base URL', p.baseUrl || ''],
     ['agentId', 'Agent ID', p.agentId || ''],
-    ['ttsTarget', '元素 id 或 CSS 选择器', p.ttsTarget || ''],
+    ['ttsTarget', 'TTS元素 id 或 CSS 选择器', p.ttsTarget || ''],
+    ['inputSelector', '输入框 id 或 CSS 选择器', p.inputSelector || ''],
     ['token', 'Token', p.token || ''],
   ];
   const modeTd = document.createElement('td');
@@ -343,7 +344,7 @@ function prepareField(item) {
     const table = document.createElement('table');
     table.className = 'profile-table';
     table.innerHTML = '<thead><tr>' +
-      '<th>名称</th><th>网址正则</th><th>Base URL</th><th>Agent ID</th><th>TTS定位</th><th>Token</th><th>模式</th><th class="profile-op"></th>' +
+      '<th>名称</th><th>网址正则</th><th>Base URL</th><th>Agent ID</th><th>TTS定位</th><th>输入定位</th><th>Token</th><th>模式</th><th class="profile-op"></th>' +
       '</tr></thead>';
     const tbody = document.createElement('tbody');
     tbody.className = 'profile-rows';

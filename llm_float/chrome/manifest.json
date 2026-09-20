@@ -36,6 +36,7 @@
         "<all_urls>"
       ],
       "js": [
+        "content/utils.js",
         "content/core.js",
         "content/features/agent.js",
         "content/features/chat.js",

@@ -156,15 +156,9 @@ function pushProfiles() {
         matched = profiles.find((p) => p.chatName === keepProfileOnStart);
         keepProfileOnStart = "";
       }
-      // 否则：根据当前页面 URL 匹配 profile
+      // 否则：根据当前页面 URL 匹配 profile（越往后优先级越高）
       if (!matched) {
-        const url = location.href || "";
-        matched = profiles[0];
-        for (let i = 1; i < profiles.length; i++) {
-          const p = profiles[i] || {};
-          if (!p.urlRegex) continue;
-          try { if (new RegExp(p.urlRegex).test(url)) { matched = p; break; } } catch (e) { /* 非法正则跳过 */ }
-        }
+        matched = window.llmUtils.matchProfile(location.href, profiles);
       }
       if (matched) {
         pushChat("setActiveChatProfile", { profile: { chatName: matched.chatName } });
@@ -193,9 +187,14 @@ function pushOrbState(state) {
 var COMMANDS = {};
 function registerCommand(name, fn) { COMMANDS[name] = fn; }
 function callCommand(name, params) {
+  console.log("[llm-float][cmd] 收到命令: " + name, params || {});
   const fn = COMMANDS[name];
-  if (!fn) return { ok: false, error: "unknown cmd: " + name };
-  try { return fn(params || {}) || { ok: true }; }
+  if (!fn) { console.warn("[llm-float][cmd] 未知命令: " + name); return { ok: false, error: "unknown cmd: " + name }; }
+  try {
+    const result = fn(params || {}) || { ok: true };
+    console.log("[llm-float][cmd] " + name + " 返回:", result);
+    return result;
+  }
   catch (e) { console.error("[llm-float][cmd] " + name, e); return { ok: false, error: String((e && e.message) || e) }; }
 }
 
