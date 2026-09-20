@@ -65,7 +65,12 @@
   function getTtsConfig() {
     return new Promise((resolve) => {
       try {
-        chrome.storage.local.get(["tts_mode", "tts_host", "tts_api_key", "tts_model", "tts_voice", "tts_response_format", "tts_sample_rate", "tts_language", "tts_speed", "tts_instructions"], (d) => resolve(d || {}));
+        chrome.storage.local.get([
+          "tts_mode",
+          "tts_hide_time",
+          "tts_ws_host", "tts_ws_api_key", "tts_ws_model", "tts_ws_voice", "tts_ws_language", "tts_ws_speed", "tts_ws_instructions",
+          "tts_http_host", "tts_http_api_key", "tts_http_model", "tts_http_voice", "tts_http_response_format", "tts_http_sample_rate", "tts_http_language", "tts_http_speed", "tts_http_instructions"
+        ], (d) => resolve(d || {}));
       } catch (e) { resolve({}); }
     });
   }
@@ -122,23 +127,23 @@
   // HTTP 非流式 TTS（/v1/audio/speech，OpenAI 风格 POST）：网络在 background 执行（可带 Authorization 头，避开 Mixed Content）
   function httpTtsSpeak(text, cfg) {
     return new Promise((resolve) => {
-      const h = normalizeHost(cfg.tts_host);
+      const h = normalizeHost(cfg.tts_http_host);
       if (!h || !/^https?:\/\//i.test(h)) {
-        console.warn("[llm-float][tts] HTTP TTS: HOST 未配置或未带 http(s):// 协议，回退浏览器合成 (当前值: '" + String(cfg.tts_host || "").trim() + "')");
+        console.warn("[llm-float][tts] HTTP TTS: HOST 未配置或未带 http(s):// 协议，回退浏览器合成 (当前值: '" + String(cfg.tts_http_host || "").trim() + "')");
         resolve(false); return;
       }
       const headers = { "Content-Type": "application/json" };
-      if (cfg.tts_api_key) headers["Authorization"] = "Bearer " + cfg.tts_api_key;
+      if (cfg.tts_http_api_key) headers["Authorization"] = "Bearer " + cfg.tts_http_api_key;
       const body = {
-        model: cfg.tts_model || "qwen3-tts",
-        voice: cfg.tts_voice || "vivian",
+        model: cfg.tts_http_model || "qwen3-tts",
+        voice: cfg.tts_http_voice || "vivian",
         input: String(text),
-        response_format: cfg.tts_response_format || "pcm",
-        speed: Number(cfg.tts_speed) || 1.0,
+        response_format: cfg.tts_http_response_format || "pcm",
+        speed: Number(cfg.tts_http_speed) || 1.0,
       };
-      if (cfg.tts_language) body.language = cfg.tts_language;
-      if (cfg.tts_instructions) body.instructions = cfg.tts_instructions;
-      console.log("[llm-float][tts] HTTP TTS 发起(background): POST " + h + "/v1/audio/speech");
+      if (cfg.tts_http_language) body.language = cfg.tts_http_language;
+      if (cfg.tts_http_instructions) body.instructions = cfg.tts_http_instructions;
+      console.log("[llm-float][tts] HTTP TTS 发起: POST " + h + "/v1/audio/speech", body);
       let settled = false;
       const timeout = setTimeout(() => { if (!settled) { settled = true; resolve(false); } }, 35000);
       try {
@@ -158,8 +163,8 @@
           const arr = new Uint8Array(bin.length);
           for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
           const audioBuf = arr.buffer;
-          console.log("[llm-float][tts] <<< 收到音频: format=" + fmt + ", size=" + audioBuf.byteLength + "B (b64=" + resp.dataB64.length + ")");
-          const play = fmt === "pcm" ? playPcm([audioBuf], Number(cfg.tts_sample_rate) || 24000) : playEncoded(audioBuf);
+          console.log("[llm-float][tts] HTTP TTS 成功: format=" + fmt + ", size=" + audioBuf.byteLength + "B (" + (audioBuf.byteLength / 1024).toFixed(1) + " KB)");
+          const play = fmt === "pcm" ? playPcm([audioBuf], Number(cfg.tts_http_sample_rate) || 24000) : playEncoded(audioBuf);
           play.then(() => resolve(true));
         });
       } catch (e) {
@@ -191,21 +196,21 @@
   // true=已处理，false=失败可回退
   function wsTtsSpeak(text, cfg) {
     return new Promise((resolve) => {
-      const url = buildWsUrl(cfg.tts_host, cfg.tts_model, cfg.tts_api_key);
+      const url = buildWsUrl(cfg.tts_ws_host, cfg.tts_ws_model, cfg.tts_ws_api_key);
       if (!url) {
-        console.warn("[llm-float][tts] WS TTS: HOST 未配置或未带 ws(s):// 协议，回退浏览器合成 (当前值: '" + String(cfg.tts_host || "").trim() + "')");
+        console.warn("[llm-float][tts] WS TTS: HOST 未配置或未带 ws(s):// 协议，回退浏览器合成 (当前值: '" + String(cfg.tts_ws_host || "").trim() + "')");
         resolve(false); return;
       }
       console.log("[llm-float][tts] WS TTS 发起(background): " + url);
       const config = {
         type: "session.config",
-        model: cfg.tts_model || "qwen3-tts",
-        voice: cfg.tts_voice || "vivian",
-        response_format: cfg.tts_response_format || "pcm",
-        sample_rate: Number(cfg.tts_sample_rate) || 24000,
-        language: cfg.tts_language || "zh",
-        speed: Number(cfg.tts_speed) || 1.0,
-        instructions: cfg.tts_instructions || "",
+        model: cfg.tts_ws_model || "qwen3-tts",
+        voice: cfg.tts_ws_voice || "vivian",
+        response_format: "pcm",
+        sample_rate: 24000,
+        language: cfg.tts_ws_language || "zh",
+        speed: Number(cfg.tts_ws_speed) || 1.0,
+        instructions: cfg.tts_ws_instructions || "",
       };
       let settled = false;
       const timeout = setTimeout(() => { if (!settled) { settled = true; resolve(false); } }, 35000);
@@ -277,7 +282,8 @@
           if (ok) {
             setUi({ tts: { speaking: false, current: "" } });
             reportToBridge("onTtsIdle", {});
-            setTimeout(() => closePanel("bubble"), 1200);
+            const hideTime = Number(cfg.tts_hide_time) || 1;
+            setTimeout(() => closePanel("bubble"), hideTime * 1000);
           } else {
             legacySpeakSentences(sentences); // 未配置 HOST / 接口失败 → 回退
           }

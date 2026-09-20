@@ -37,17 +37,26 @@ const STORAGE_SCHEMA = [
     segmentOptions: [['off', '关'], ['stream', '流式'], ['http', '非流式']],
     segmentDefault: 'stream',
     items: [
-      { key: 'tts_lines', label: '显示行数', type: 'select', value: '2', options: [['1', '1'], ['2', '2'], ['3', '3'], ['5', '5']] },
-      // TTS 接口配置（WS /v1/audio/speech/stream + HTTP /v1/audio/speech），播报方式由标题栏三态选择
-      { key: 'tts_host', label: 'TTS 服务 HOST', type: 'text', value: '' },
-      { key: 'tts_api_key', label: 'TTS API Key', type: 'password', value: '' },
-      { key: 'tts_model', label: 'TTS 模型', type: 'text', value: 'qwen3-tts' },
-      { key: 'tts_voice', label: '音色 voice', type: 'text', value: 'vivian' },
-      { key: 'tts_response_format', label: '音频格式 response_format', type: 'text', value: 'pcm' },
-      { key: 'tts_sample_rate', label: '采样率 sample_rate', type: 'number', value: 24000, min: 8000, max: 48000, step: 1000 },
-      { key: 'tts_language', label: '语言 language', type: 'text', value: 'zh' },
-      { key: 'tts_speed', label: '语速 speed', type: 'number', value: 1.0, min: 0.5, max: 2.0, step: 0.1 },
-      { key: 'tts_instructions', label: '指令 instructions', type: 'text', value: '' },
+      // 流式 TTS 配置
+      { key: 'tts_ws_host', label: '流式 HOST', type: 'text', value: '', showWhen: ['stream'] },
+      { key: 'tts_ws_api_key', label: '流式 API Key', type: 'password', value: '', showWhen: ['stream'] },
+      { key: 'tts_ws_model', label: '流式模型', type: 'text', value: 'qwen3-tts', showWhen: ['stream'] },
+      { key: 'tts_ws_voice', label: '流式音色', type: 'text', value: 'vivian', showWhen: ['stream'] },
+      { key: 'tts_ws_language', label: '流式语言', type: 'text', value: 'zh', showWhen: ['stream'] },
+      { key: 'tts_ws_speed', label: '流式语速', type: 'number', value: 1.0, min: 0.5, max: 2.0, step: 0.1, showWhen: ['stream'] },
+      { key: 'tts_ws_instructions', label: '流式指令', type: 'text', value: '', showWhen: ['stream'] },
+      // 非流式 TTS 配置
+      { key: 'tts_http_host', label: '非流式 HOST', type: 'text', value: '', showWhen: ['http'] },
+      { key: 'tts_http_api_key', label: '非流式 API Key', type: 'password', value: '', showWhen: ['http'] },
+      { key: 'tts_http_model', label: '非流式模型', type: 'text', value: 'qwen3-tts', showWhen: ['http'] },
+      { key: 'tts_http_voice', label: '非流式音色', type: 'text', value: 'vivian', showWhen: ['http'] },
+      { key: 'tts_http_response_format', label: '非流式音频格式', type: 'text', value: 'pcm', showWhen: ['http'] },
+      { key: 'tts_http_sample_rate', label: '非流式采样率', type: 'number', value: 24000, min: 8000, max: 48000, step: 1000, showWhen: ['http'] },
+      { key: 'tts_http_language', label: '非流式语言', type: 'text', value: 'zh', showWhen: ['http'] },
+      { key: 'tts_http_speed', label: '非流式语速', type: 'number', value: 1.0, min: 0.5, max: 2.0, step: 0.1, showWhen: ['http'] },
+      { key: 'tts_http_instructions', label: '非流式指令', type: 'text', value: '', showWhen: ['http'] },
+      // 通用配置
+      { key: 'tts_hide_time', label: '播报后关闭窗口(秒)', type: 'number', value: 1, min: 0, max: 10, step: 0.5, showWhen: ['stream', 'http'] },
     ],
   },
   {
@@ -56,11 +65,12 @@ const STORAGE_SCHEMA = [
     segmentOptions: [['off', '关'], ['stream', '流式'], ['http', '非流式']],
     segmentDefault: 'http',
     items: [
-      // ASR 接口配置（非流式 POST /v1/audio/transcriptions；流式实时识别待接口文档接入）
-      { key: 'asr_host', label: 'ASR 服务 HOST', type: 'text', value: '' },
-      { key: 'asr_api_key', label: 'ASR API Key', type: 'password', value: '' },
-      { key: 'asr_model', label: '识别模型', type: 'text', value: 'qwen3-asr' },
-      { key: 'asr_language', label: '识别语言', type: 'text', value: 'zh' },
+      // ASR 接口配置（非流式 POST /v1/audio/transcriptions；流式用浏览器自带识别，不用接口）
+      { key: 'asr_host', label: 'ASR 服务 HOST', type: 'text', value: '', showWhen: ['http'] },
+      { key: 'asr_api_key', label: 'ASR API Key', type: 'password', value: '', showWhen: ['http'] },
+      { key: 'asr_model', label: '识别模型', type: 'text', value: 'qwen3-asr', showWhen: ['http'] },
+      { key: 'asr_language', label: '识别语言', type: 'text', value: 'zh', showWhen: ['http'] },
+      { key: 'asr_send_delay', label: '识别结果停留(秒)', type: 'number', value: 2, min: 0, max: 10, step: 0.5, showWhen: ['stream', 'http'] },
     ],
   },
   {
@@ -77,18 +87,7 @@ const STORAGE_SCHEMA = [
       { key: 'temperature', label: 'temperature', type: 'number', value: 0.7, min: 0, max: 2, step: 0.1 },
       { key: 'max_tokens', label: '单次最大 tokens', type: 'number', value: 2048, min: 256, max: 32768, step: 256 },
       { key: 'stream', label: '流式输出', type: 'bool', value: true },
-      { key: 'tts_font_size', label: '字号', type: 'number', value: 18, min: 12, max: 40, step: 1 },
-      { key: 'tts_max_chars', label: '每行最大字数', type: 'number', value: 24, min: 8, max: 60, step: 1 },
-      { key: 'tts_align', label: '对齐方式', type: 'select', value: 'center', options: [['left', '左'], ['center', '居中'], ['right', '右']] },
-      { key: 'tts_hold', label: '单句停留时长(秒)', type: 'number', value: 3, min: 1, max: 20, step: 1 },
-      { key: 'tts_auto_hide', label: '播报结束自动隐藏', type: 'bool', value: true },
-      { key: 'asr_language', label: '识别语言', type: 'select', value: 'auto', options: [['auto', '自动'], ['zh', '中文'], ['en', '英文']] },
-      { key: 'asr_engine', label: '识别引擎', type: 'select', value: 'whisper', options: [['whisper', 'Whisper'], ['xfyun', '讯飞'], ['local', '本地模型']] },
-      { key: 'asr_sample_rate', label: '采样率', type: 'select', value: '16000', options: [['16000', '16000'], ['44100', '44100']] },
-      { key: 'asr_show_interim', label: '显示中间结果', type: 'bool', value: true },
-      { key: 'asr_silence', label: '静音自动结束(秒)', type: 'number', value: 3, min: 1, max: 15, step: 1 },
-      { key: 'asr_auto_punct', label: '自动补全标点', type: 'bool', value: true },
-      { key: 'asr_devices', label: '输入设备', type: 'list', value: ['默认麦克风'], options: ['默认麦克风', '麦克风 A', '麦克风 B'] },
+
       { key: 'hotkey_chat', label: '唤起聊天', type: 'text', value: 'Ctrl+Alt+Space' },
       { key: 'hotkey_asr', label: '开始 / 结束识别', type: 'text', value: 'Ctrl+Alt+R' },
       { key: 'log_level', label: '日志级别', type: 'select', value: 'INFO', options: [['DEBUG', 'DEBUG'], ['INFO', 'INFO'], ['WARN', 'WARN'], ['ERROR', 'ERROR']] },
@@ -390,7 +389,11 @@ function renderSettings(data) {
 
     const list = document.createElement('div');
     list.className = 'field-list';
-    (section.items || []).forEach(item => list.appendChild(prepareField(item)));
+    (section.items || []).forEach(item => {
+      // 根据模式判断是否显示
+      if (item.showWhen && section.segment && !item.showWhen.includes(section.segment)) return;
+      list.appendChild(prepareField(item));
+    });
     sectionEl.appendChild(list);
     body.appendChild(sectionEl);
 
@@ -406,9 +409,12 @@ function renderSettings(data) {
         b.className = 'seg-btn' + (String(section.segment) === val ? ' active' : '');
         b.textContent = label;
         b.addEventListener('click', () => {
-          try { chrome.storage.local.set({ [section.segmentKey]: val }); } catch (e) { /* 忽略 */ }
-          seg.querySelectorAll('.seg-btn').forEach((x) => x.classList.remove('active'));
-          b.classList.add('active');
+          try {
+            chrome.storage.local.set({ [section.segmentKey]: val }, () => {
+              // 存完再重新渲染，确保拿到最新值
+              loadSettings();
+            });
+          } catch (e) { /* 忽略 */ }
         });
         seg.appendChild(b);
       });

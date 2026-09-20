@@ -183,9 +183,10 @@
       if (hostNorm && /^https?:\/\//i.test(hostNorm)) {
         httpAsrRecognize(blob, cfg).then((text) => {
           if (!text) { showAsrFail("识别无结果（接口返回空）"); return; }
-          // 先在气泡里显示结果，停 2 秒再发到聊天窗
+          // 先在气泡里显示结果，停留指定时间再发到聊天窗
           showAsrFinal(text);
-          setTimeout(() => sendResultToChat(text), 2000);
+          const delay = Number(cfg.asr_send_delay) || 2;
+          setTimeout(() => sendResultToChat(text), delay * 1000);
         }).catch((e) => showAsrFail("识别失败：" + (e && e.message ? e.message : String(e))));
       } else {
         console.warn("[llm-float][asr] HOST 未配置或未带 http(s):// 协议，未发起识别");
