@@ -41,6 +41,11 @@ function initMain() {
           pushThemeAll();
           orbSize = d.orb_size || 68;
           pushOrb("setOrbSize", { size: orbSize });
+          pushOrb("setOrbActions", {
+            left: d.orb_action_left || "open_chat",
+            right: d.orb_action_right || "open_asr",
+            wheel: d.orb_action_wheel || "none",
+          });
           pushChat("setChatProfiles", { profiles: d.chat_profiles || [] });
           callCommand("startTtsTarget", {});
         });

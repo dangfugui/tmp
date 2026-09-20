@@ -307,11 +307,20 @@ function startMaskDrag(frame) {
 }
 
 /* ========== 悬浮球交互（button iframe 上报，内核处理） ========== */
+// 动作映射表：加新动作只改这里
+const ORB_ACTION_HANDLERS = {
+  drag_move: (data) => moveDrag(data.x, data.y),
+  drag_end: () => endDrag(),
+  open_chat: () => { endDrag(); callCommand("showChat", {}); pushOrbState("chat"); },
+  open_asr: () => { callCommand("stopSpeak", {}); callCommand("startAsr", {}); },
+  open_settings: () => chrome.runtime.sendMessage({ type: "llm_open_options" }),
+  open_tts: () => callCommand("runDemo", { demo: "tts" }),
+  toggle_enabled: () => setEnabled(!uiState.orb.enabled),
+};
+
 function handleOrbAction(data) {
-  if (data.action === "drag_move") moveDrag(data.x, data.y);
-  else if (data.action === "drag_end") endDrag();
-  else if (data.action === "open_chat") { endDrag(); callCommand("showChat", {}); pushOrbState("chat"); }
-  else if (data.action === "open_asr") { callCommand("stopSpeak", {}); callCommand("startAsr", {}); }
+  const handler = ORB_ACTION_HANDLERS[data.action];
+  if (handler) handler(data);
 }
 
 /* ========== 总开关 ========== */

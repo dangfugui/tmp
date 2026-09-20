@@ -3,6 +3,9 @@
   "orb_size": 68,
   "orb_opacity": 1,
   "orb_enabled": true,
+  "orb_action_left": "open_chat",
+  "orb_action_right": "open_asr",
+  "orb_action_wheel": "none",
   "chat_profiles": [
     {
       "chatName": "默认",

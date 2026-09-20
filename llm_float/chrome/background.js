@@ -89,7 +89,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case "llm_init": {
       // content script 注入后拉取全局配置（async 响应）
       (async () => {
-        const got = await chrome.storage.local.get(["theme", "orb_size", "orb_opacity", "orb_enabled", "chat_profiles", "active_profile_name"]);
+        const got = await chrome.storage.local.get(["theme", "orb_size", "orb_opacity", "orb_enabled", "chat_profiles", "active_profile_name", "orb_action_left", "orb_action_right", "orb_action_wheel"]);
         sendResponse({ ok: true, data: got });
       })();
       return true;
