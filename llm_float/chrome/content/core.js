@@ -219,7 +219,7 @@ registerCommand("runDemo", (p) => {
   openPanel("bubble");
   pushBubble("setTheme", { theme: currentTheme });
   if (isAsr) callCommand("startAsrDemo", {});
-  else pushBubble("runDemo", { type: "tts" });
+  else callCommand("speakText", { text: "这是一段语音播报演示，用于展示字幕气泡效果。欢迎使用悬浮助手。" });
   return { ok: true };
 });
 

@@ -232,15 +232,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
     }
     case "llm_asr": {
-      // ASR 非流式：POST /v1/audio/transcriptions（multipart，audio 为 ArrayBuffer）
-      const form = new FormData();
-      form.append("file", new Blob([msg.audio], { type: "audio/webm" }), msg.filename || "record.webm");
-      form.append("model", msg.model || "qwen3-asr");
-      form.append("language", msg.language || "zh");
-      fetch(msg.url, { method: "POST", headers: msg.headers || {}, body: form })
-        .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-        .then((d) => sendResponse({ ok: true, text: (d && d.text) || "" }))
-        .catch((e) => sendResponse({ ok: false, error: String(e) }));
+
+      // ASR 非流式：POST /v1/audio/transcriptions（multipart）
+      // 通过 base64 接收音频（避免 sendMessage ArrayBuffer 结构化克隆损坏）
+      (async () => {
+        try {
+          const bin = atob(msg.audioB64);
+          const buf = new ArrayBuffer(bin.length);
+          const view = new Uint8Array(buf);
+          for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+          const blob = new Blob([buf]);
+          const form = new FormData();
+          form.append("file", blob, "record.wav");
+          form.append("model", msg.model || "qwen3-asr");
+          const fetchOpts = { method: "POST", body: form };
+          if (msg.headers && Object.keys(msg.headers).length > 0) fetchOpts.headers = msg.headers;
+          const resp = await fetch(msg.url, fetchOpts);
+          const raw = await resp.text();
+          if (!resp.ok) { sendResponse({ ok: false, error: "HTTP " + resp.status + " body=" + raw.slice(0, 200) }); return; }
+          let d; try { d = JSON.parse(raw); } catch (e) { sendResponse({ ok: false, error: "JSON parse: " + raw.slice(0, 200) }); return; }
+          sendResponse({ ok: true, text: (d && d.text) || "" });
+        } catch (e) {
+          sendResponse({ ok: false, error: String(e) });
+        }
+      })();
       return true;
     }
     default:

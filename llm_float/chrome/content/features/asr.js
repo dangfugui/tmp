@@ -158,27 +158,95 @@
     });
   }
 
-  // 非流式识别：POST /v1/audio/transcriptions（OpenAI 兼容，multipart；网络在 background 执行，避开 Mixed Content）
+
+  // webm → WAV 转换（AudioContext 解码 + 重采样为 16kHz 16bit 单声道 WAV）
+  function webmToWav(blob) {
+    return new Promise((resolve, reject) => {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const fr = new FileReader();
+      fr.onload = () => {
+        ctx.decodeAudioData(fr.result, (ab) => {
+          const srcRate = ab.sampleRate;
+          const srcData = ab.getChannelData(0);
+          const dstRate = 16000;
+          const ratio = dstRate / srcRate;
+          const dstLen = Math.round(ab.length * ratio);
+          const dstData = new Float32Array(dstLen);
+          for (let i = 0; i < dstLen; i++) {
+            const si = i / ratio; const lo = Math.floor(si); const hi = Math.min(lo + 1, ab.length - 1); const f = si - lo;
+            dstData[i] = srcData[lo] * (1 - f) + srcData[hi] * f;
+          }
+          const pcm = new Int16Array(dstLen);
+          for (let i = 0; i < dstLen; i++) { const s = Math.max(-1, Math.min(1, dstData[i])); pcm[i] = s < 0 ? s * 32768 : s * 32767; }
+          const dataSize = dstLen * 2;
+          const wavBuf = new ArrayBuffer(44 + dataSize);
+          const dv = new DataView(wavBuf);
+          const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+          ws(0,"RIFF"); dv.setUint32(4, 36+dataSize, true); ws(8,"WAVE"); ws(12,"fmt ");
+          dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+          dv.setUint32(24, dstRate, true); dv.setUint32(28, dstRate*2, true);
+          dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+          ws(36,"data"); dv.setUint32(40, dataSize, true);
+          for (let i = 0; i < dstLen; i++) dv.setInt16(44 + i*2, pcm[i], true);
+          ctx.close();
+          console.log("[llm-float][asr] webm→wav 成功: rate=" + dstRate + "Hz, wavSize=" + wavBuf.byteLength + "B");
+          resolve(new Blob([wavBuf], { type: "audio/wav" }));
+        }, (err) => { ctx.close(); reject(new Error("decodeAudioData: " + String(err))); });
+      };
+      fr.onerror = () => reject(new Error("FileReader error"));
+      fr.readAsArrayBuffer(blob);
+    });
+  }
+
+   // 非流式识别：POST /v1/audio/transcriptions（OpenAI 兼容，multipart）
+  // content 做 webm→wav 转换，base64 传 background 发请求（避开 CORS + 避免 ArrayBuffer 损坏）
   function httpAsrRecognize(blob, cfg) {
     return new Promise((resolve, reject) => {
-      const h = normalizeHost(cfg.asr_host);
-      const headers = {};
-      if (cfg.asr_api_key) headers["Authorization"] = "Bearer " + cfg.asr_api_key;
-      console.log("[llm-float][asr] HTTP ASR 发起(background): POST " + h + "/v1/audio/transcriptions");
-      blob.arrayBuffer().then((ab) => {
-        chrome.runtime.sendMessage({
-          type: "llm_asr",
-          url: h + "/v1/audio/transcriptions",
-          headers,
-          audio: ab,
-          model: cfg.asr_model || "qwen3-asr",
-          language: cfg.asr_language || "zh",
-        }, (resp) => {
-          if (chrome.runtime.lastError) { reject(new Error("bridge error: " + (chrome.runtime.lastError.message || "?"))); return; }
-          if (!resp || !resp.ok) { reject(new Error((resp && resp.error) || "ASR 请求失败")); return; }
-          resolve(resp.text || "");
-        });
-      }).catch((e) => reject(e));
+      webmToWav(blob).then((wavBlob) => {
+        const h = normalizeHost(cfg.asr_host);
+        const headers = {};
+        if (cfg.asr_api_key) headers["Authorization"] = "Bearer " + cfg.asr_api_key;
+        wavBlob.arrayBuffer().then((ab) => {
+          const bytes = new Uint8Array(ab);
+          let bin = "";
+          for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+          const b64 = btoa(bin);
+          chrome.runtime.sendMessage({
+            type: "llm_asr",
+            url: h + "/v1/audio/transcriptions",
+            headers,
+            audioB64: b64,
+            model: cfg.asr_model || "qwen3-asr",
+          }, (resp) => {
+            if (chrome.runtime.lastError) { reject(new Error("bridge error: " + (chrome.runtime.lastError.message || "?"))); return; }
+            if (!resp || !resp.ok) { reject(new Error((resp && resp.error) || "ASR 请求失败")); return; }
+            resolve(resp.text || "");
+          });
+        }).catch((e) => reject(e));
+      }).catch((e) => {
+        console.error("[llm-float][asr] webm→wav 转换失败:", e.message);
+        // 降级：直接发原始 webm（用 arrayBuffer 传给 background）
+        const h = normalizeHost(cfg.asr_host);
+        const headers = {};
+        if (cfg.asr_api_key) headers["Authorization"] = "Bearer " + cfg.asr_api_key;
+        blob.arrayBuffer().then((ab) => {
+          const bytes = new Uint8Array(ab);
+          let bin = "";
+          for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+          const b64 = btoa(bin);
+          chrome.runtime.sendMessage({
+            type: "llm_asr",
+            url: h + "/v1/audio/transcriptions",
+            headers,
+            audioB64: b64,
+            model: cfg.asr_model || "qwen3-asr",
+          }, (resp) => {
+            if (chrome.runtime.lastError) { reject(new Error("bridge error: " + (chrome.runtime.lastError.message || "?"))); return; }
+            if (!resp || !resp.ok) { reject(new Error((resp && resp.error) || "ASR 请求失败")); return; }
+            resolve(resp.text || "");
+          });
+        }).catch((e) => reject(e));
+      });
     });
   }
 
