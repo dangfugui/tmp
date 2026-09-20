@@ -12,6 +12,9 @@
   var asrActive = false;
   var asrMockTimer = null;
   var asrMockLast = "";
+  var asrAudioCtx = null;
+  var asrAnalyser = null;
+  var asrVolumeRaf = null;
 
   // HOST 容错：允许误填完整接口路径（如 .../v1/audio/transcriptions），剥到根地址再拼接
   function normalizeHost(h) {
@@ -58,6 +61,9 @@
     pushOrbState("idle");
   }
   function releaseMic() {
+    if (asrVolumeRaf) { clearTimeout(asrVolumeRaf); asrVolumeRaf = null; }
+    if (asrAudioCtx) { try { asrAudioCtx.close(); } catch (e) {} asrAudioCtx = null; }
+    asrAnalyser = null;
     if (asrMediaStream) {
       try { asrMediaStream.getTracks().forEach((tr) => tr.stop()); } catch (e) { /* 忽略 */ }
       asrMediaStream = null;
@@ -122,6 +128,33 @@
       asrActive = true;
       console.log("[llm-float][asr] 录音已开始 (mime=" + (rec.mimeType || "default") + ", state=" + rec.state + ")");
       showAsrText("聆听中…（点击停止后识别）");
+      // 启动真实音量分析（波形用）
+      try {
+        asrAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = asrAudioCtx.createMediaStreamSource(stream);
+        asrAnalyser = asrAudioCtx.createAnalyser();
+        asrAnalyser.fftSize = 256;
+        source.connect(asrAnalyser);
+        const dataArray = new Uint8Array(asrAnalyser.fftSize);
+        const tick = () => {
+          if (!asrAnalyser) return;
+          asrAnalyser.getByteTimeDomainData(dataArray);
+          // 从波形数据里分 10 段，取每段的最大振幅
+          const levels = [];
+          const segSize = Math.floor(dataArray.length / 10);
+          for (let i = 0; i < 10; i++) {
+            let max = 0;
+            for (let j = 0; j < segSize; j++) {
+              const v = Math.abs(dataArray[i * segSize + j] - 128) / 128;
+              if (v > max) max = v;
+            }
+            levels.push(max);
+          }
+          pushBubble("onAsrVolume", { levels: levels });
+          asrVolumeRaf = setTimeout(tick, 100); // 每 100ms 更新一次
+        };
+        tick();
+      } catch (e) { console.warn("[llm-float][asr] 音量分析启动失败:", e); }
     }).catch((err) => {
       asrActive = false;
       console.error("[llm-float][asr] 麦克风不可用:", err && err.message ? err.message : String(err));
@@ -142,14 +175,17 @@
     const blob = new Blob(asrMediaChunks, { type: rec ? rec.mimeType || "audio/webm" : "audio/webm" });
     asrMediaChunks = [];
     showAsrText("识别中…");
+    pushBubble("onAsrState", { state: "recognizing" });
+    reportToBridge("onAsrState", { state: "recognizing" });
     getAsrConfig().then((cfg) => {
       const hostNorm = normalizeHost(cfg.asr_host);
-      console.log("[llm-float][asr] 识别配置: host='" + String(cfg.asr_host || "") + "', mode='" + String(cfg.asr_mode || "") + "'");
+      console.log("[llm-float][asr] 识别配置: host='" + String(cfg.asr_host || "") + "', mode='" + String(cfg.asr_mode || "") + "', model=" + (cfg.asr_model || "qwen3-asr") + ", language=" + (cfg.asr_language || "zh"));
       if (hostNorm && /^https?:\/\//i.test(hostNorm)) {
         httpAsrRecognize(blob, cfg).then((text) => {
           if (!text) { showAsrFail("识别无结果（接口返回空）"); return; }
+          // 先在气泡里显示结果，停 2 秒再发到聊天窗
           showAsrFinal(text);
-          sendResultToChat(text);
+          setTimeout(() => sendResultToChat(text), 2000);
         }).catch((e) => showAsrFail("识别失败：" + (e && e.message ? e.message : String(e))));
       } else {
         console.warn("[llm-float][asr] HOST 未配置或未带 http(s):// 协议，未发起识别");
@@ -189,7 +225,6 @@
           ws(36,"data"); dv.setUint32(40, dataSize, true);
           for (let i = 0; i < dstLen; i++) dv.setInt16(44 + i*2, pcm[i], true);
           ctx.close();
-          console.log("[llm-float][asr] webm→wav 成功: rate=" + dstRate + "Hz, wavSize=" + wavBuf.byteLength + "B");
           resolve(new Blob([wavBuf], { type: "audio/wav" }));
         }, (err) => { ctx.close(); reject(new Error("decodeAudioData: " + String(err))); });
       };
@@ -202,8 +237,10 @@
   // content 做 webm→wav 转换，base64 传 background 发请求（避开 CORS + 避免 ArrayBuffer 损坏）
   function httpAsrRecognize(blob, cfg) {
     return new Promise((resolve, reject) => {
+      const h = normalizeHost(cfg.asr_host);
+      const params = { model: cfg.asr_model || "qwen3-asr", language: cfg.asr_language || "zh" };
       webmToWav(blob).then((wavBlob) => {
-        const h = normalizeHost(cfg.asr_host);
+        console.log("[llm-float][asr] HTTP ASR: POST " + h + "/v1/audio/transcriptions", params, "原始:", blob.size, "B", "→ WAV:", wavBlob.size, "B");
         const headers = {};
         if (cfg.asr_api_key) headers["Authorization"] = "Bearer " + cfg.asr_api_key;
         wavBlob.arrayBuffer().then((ab) => {
@@ -216,17 +253,29 @@
             url: h + "/v1/audio/transcriptions",
             headers,
             audioB64: b64,
-            model: cfg.asr_model || "qwen3-asr",
+            model: params.model,
+            language: params.language,
           }, (resp) => {
-            if (chrome.runtime.lastError) { reject(new Error("bridge error: " + (chrome.runtime.lastError.message || "?"))); return; }
-            if (!resp || !resp.ok) { reject(new Error((resp && resp.error) || "ASR 请求失败")); return; }
+            if (chrome.runtime.lastError) {
+              console.error("[llm-float][asr] HTTP ASR 失败(bridge):", chrome.runtime.lastError.message || "?");
+              reject(new Error("bridge error: " + (chrome.runtime.lastError.message || "?")));
+              return;
+            }
+            if (!resp || !resp.ok) {
+              console.error("[llm-float][asr] HTTP ASR 失败:", (resp && resp.error) || "ASR 请求失败");
+              reject(new Error((resp && resp.error) || "ASR 请求失败"));
+              return;
+            }
+            console.log("[llm-float][asr] HTTP ASR 成功，识别结果:", resp.text || "");
             resolve(resp.text || "");
           });
-        }).catch((e) => reject(e));
+        }).catch((e) => {
+          console.error("[llm-float][asr] WAV 读取失败:", e);
+          reject(e);
+        });
       }).catch((e) => {
-        console.error("[llm-float][asr] webm→wav 转换失败:", e.message);
+        console.error("[llm-float][asr] webm→wav 转换失败:", e.message, "→ 降级发原始 webm");
         // 降级：直接发原始 webm（用 arrayBuffer 传给 background）
-        const h = normalizeHost(cfg.asr_host);
         const headers = {};
         if (cfg.asr_api_key) headers["Authorization"] = "Bearer " + cfg.asr_api_key;
         blob.arrayBuffer().then((ab) => {
@@ -239,13 +288,26 @@
             url: h + "/v1/audio/transcriptions",
             headers,
             audioB64: b64,
-            model: cfg.asr_model || "qwen3-asr",
+            model: params.model,
+            language: params.language,
           }, (resp) => {
-            if (chrome.runtime.lastError) { reject(new Error("bridge error: " + (chrome.runtime.lastError.message || "?"))); return; }
-            if (!resp || !resp.ok) { reject(new Error((resp && resp.error) || "ASR 请求失败")); return; }
+            if (chrome.runtime.lastError) {
+              console.error("[llm-float][asr] HTTP ASR 降级失败(bridge):", chrome.runtime.lastError.message || "?");
+              reject(new Error("bridge error: " + (chrome.runtime.lastError.message || "?")));
+              return;
+            }
+            if (!resp || !resp.ok) {
+              console.error("[llm-float][asr] HTTP ASR 降级失败:", (resp && resp.error) || "ASR 请求失败");
+              reject(new Error((resp && resp.error) || "ASR 请求失败"));
+              return;
+            }
+            console.log("[llm-float][asr] HTTP ASR 降级成功，识别结果:", resp.text || "");
             resolve(resp.text || "");
           });
-        }).catch((e) => reject(e));
+        }).catch((e) => {
+          console.error("[llm-float][asr] 原始音频读取失败:", e);
+          reject(e);
+        });
       });
     });
   }

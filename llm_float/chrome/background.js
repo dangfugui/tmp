@@ -224,11 +224,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     }
     case "llm_tts_http": {
-      // HTTP 非流式 TTS：POST /v1/audio/speech → 完整音频（ArrayBuffer 回传）
+      // HTTP 非流式 TTS：POST /v1/audio/speech → 完整音频（base64 回传，避免 sendMessage ArrayBuffer 损坏）
+      console.log("[tts-bg] >>> POST", msg.url, JSON.stringify(msg.headers || {}), JSON.stringify(msg.body || {}).slice(0, 500));
       fetch(msg.url, { method: "POST", headers: msg.headers || {}, body: JSON.stringify(msg.body || {}) })
-        .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
-        .then((buf) => sendResponse({ ok: true, data: buf }))
-        .catch((e) => sendResponse({ ok: false, error: String(e) }));
+        .then((r) => {
+          console.log("[tts-bg] <<< Status:", r.status, r.statusText, JSON.stringify(Object.fromEntries([...r.headers.entries()])));
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.arrayBuffer();
+        })
+        .then((buf) => {
+          // 转 base64 避免 sendMessage 损坏（content 已打印 size 信息）
+          const bytes = new Uint8Array(buf);
+          let bin = "";
+          for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+          const b64 = btoa(bin);
+          sendResponse({ ok: true, dataB64: b64, format: (msg.body && msg.body.response_format) || "pcm" });
+        })
+        .catch((e) => {
+          console.error("[tts-bg] XXX 失败:", e.message);
+          sendResponse({ ok: false, error: String(e) });
+        });
       return true;
     }
     case "llm_asr": {

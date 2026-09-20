@@ -47,10 +47,18 @@ function onTtsIdle() {
 }
 
 function onAsrState(payload) {
-  const listening = payload.state === 'listening';
+  const state = payload.state;
+  const listening = state === 'listening';
+  const recognizing = state === 'recognizing';
   asrDot.style.visibility = listening ? 'visible' : 'hidden';
   if (asrStopBtn) asrStopBtn.style.display = listening ? '' : 'none';
-  if (!listening && !asrFinal) {
+  const wave = document.getElementById('asr-wave');
+  const loading = document.getElementById('asr-loading');
+  if (wave) wave.style.display = listening ? '' : 'none';
+  if (loading) loading.style.display = recognizing ? '' : 'none';
+  if (recognizing) {
+    asrText.textContent = '识别中…';
+  } else if (!listening && !asrFinal) {
     asrText.textContent = '已停止';
   }
 }
@@ -78,6 +86,17 @@ function renderAsr(interim) {
 
 function onAsrPartial(payload) {
   renderAsr(payload.text);
+}
+
+function onAsrVolume(payload) {
+  const levels = payload && payload.levels ? payload.levels : [];
+  const bars = document.querySelectorAll('#asr-wave i');
+  bars.forEach((bar, i) => {
+    const v = levels[i] || 0;
+    const h = Math.max(6, Math.min(60, v * 120));
+    bar.style.height = h + 'px';
+    bar.style.animation = 'none';
+  });
 }
 
 function onAsrFinal(payload) {
@@ -128,6 +147,7 @@ window.assistant = {
   onTtsIdle,
   onAsrState,
   onAsrPartial,
+  onAsrVolume,
   onAsrFinal,
   stopDemo() {
     // 互斥时调用：停止正在播放的 TTS（ASR 由 content 顶层停止）

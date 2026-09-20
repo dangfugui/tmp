@@ -109,7 +109,11 @@
         const finish = () => { try { src.disconnect(); } catch (e) { /* 忽略 */ } resolve(); };
         src.onended = finish;
         // autoplay 策略：无用户手势时可能挂起，尝试恢复（失败则仅字幕、无声）
-        if (wsTtsAudioCtx.state === "suspended") { try { wsTtsAudioCtx.resume(); } catch (e) { /* 忽略 */ } }
+        if (wsTtsAudioCtx.state === "suspended") {
+          console.warn("[llm-float][tts] AudioContext 被浏览器暂停（自动播放策略），尝试恢复...");
+          try { wsTtsAudioCtx.resume(); } catch (e) { /* 忽略 */ }
+          console.warn("[llm-float][tts] 提示：如果听不到声音，请点击一下页面或悬浮球解锁声音播放");
+        }
         src.start();
       } catch (e) { console.error("[llm-float][tts] PCM 播放出错:", e); resolve(); }
     });
@@ -148,7 +152,14 @@
             return;
           }
           const fmt = String(cfg.tts_response_format || "pcm").toLowerCase();
-          const play = fmt === "pcm" ? playPcm([resp.data], Number(cfg.tts_sample_rate) || 24000) : playEncoded(resp.data);
+          if (!resp.dataB64) { console.error("[llm-float][tts] dataB64 为空"); resolve(false); return; }
+          // base64 → ArrayBuffer
+          const bin = atob(resp.dataB64);
+          const arr = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          const audioBuf = arr.buffer;
+          console.log("[llm-float][tts] <<< 收到音频: format=" + fmt + ", size=" + audioBuf.byteLength + "B (b64=" + resp.dataB64.length + ")");
+          const play = fmt === "pcm" ? playPcm([audioBuf], Number(cfg.tts_sample_rate) || 24000) : playEncoded(audioBuf);
           play.then(() => resolve(true));
         });
       } catch (e) {
