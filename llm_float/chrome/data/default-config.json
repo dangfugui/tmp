@@ -15,7 +15,8 @@
       "token": "",
       "ttsTarget": "",
       "inputSelector": "",
-      "mode": "qwenpaw"
+      "mode": "qwenpaw",
+      "prompt": ""
     },
     {
       "chatName": "QA",
@@ -25,7 +26,8 @@
       "token": "",
       "ttsTarget": "#normalSugSearchUl li:nth-child(1)",
       "inputSelector": "#chat-textarea",
-      "mode": "qwenpaw"
+      "mode": "qwenpaw",
+      "prompt": ""
     },
     {
       "chatName": "bing",
@@ -35,7 +37,8 @@
       "token": "",
       "ttsTarget": ".b_searchbox",
       "inputSelector": "",
-      "mode": "qwenpaw"
+      "mode": "qwenpaw",
+      "prompt": ""
     },
     {
       "chatName": "deepseek",
@@ -45,12 +48,19 @@
       "token": "sk-",
       "ttsTarget": "",
       "inputSelector": "",
-      "mode": "llm"
+      "mode": "llm",
+      "prompt": ""
     }
   ],
   "quick_links": [
-    { "name": "deepseek", "url": "deepseek.com" },
-    { "name": "baidu", "url": "baidu.com" }
+    {
+      "name": "deepseek",
+      "url": "deepseek.com"
+    },
+    {
+      "name": "baidu",
+      "url": "baidu.com"
+    }
   ],
   "active_profile_name": "默认",
   "tts_mode": "http",
@@ -76,5 +86,6 @@
   "asr_api_key": "",
   "asr_model": "qwen3-asr",
   "asr_language": "zh",
-  "asr_send_delay": 2
+  "asr_send_delay": 2,
+  "max_conversations": 20
 }

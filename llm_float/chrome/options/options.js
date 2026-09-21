@@ -13,13 +13,14 @@ const STORAGE_SCHEMA = [
       { key: 'orb_action_wheel', label: '滚轮动作', type: 'select', value: 'none', options: ORB_ACTIONS.map(a => [a.value, a.label]) },
       { key: 'agent_workdir', label: 'Agent 工作目录', type: 'agent_workdir', value: '' },
       { key: 'context_turns', label: '上下文轮数', type: 'number', value: 10, min: 1, max: 50, step: 1 },
+      { key: 'max_conversations', label: '最多保留会话数', type: 'number', value: 20, min: 1, max: 999, step: 1 },
     ],
   },
   {
     section: '聊天（网址匹配）',
     items: [
       { key: 'chat_profiles', label: '', type: 'chat_profiles', value: [
-        { chatName: '默认', urlRegex: '.*', baseUrl: 'http://localhost:8088', agentId: 'default', ttsTarget: '', inputSelector: '', token: '', mode: 'qwenpaw' },
+        { chatName: '默认', urlRegex: '.*', baseUrl: 'http://localhost:8088', agentId: 'default', ttsTarget: '', inputSelector: '', prompt: '', token: '', mode: 'qwenpaw' },
       ] },
     ],
   },
@@ -169,6 +170,7 @@ function buildProfileRow(p) {
     ['agentId', 'Agent ID', p.agentId || ''],
     ['ttsTarget', 'TTS元素 id 或 CSS 选择器', p.ttsTarget || ''],
     ['inputSelector', '输入框 id 或 CSS 选择器', p.inputSelector || ''],
+    ['prompt', '首次对话提示词（留空不拼接）', p.prompt || ''],
     ['token', 'Token', p.token || ''],
   ];
   const modeTd = document.createElement('td');
@@ -344,7 +346,7 @@ function prepareField(item) {
     const table = document.createElement('table');
     table.className = 'profile-table';
     table.innerHTML = '<thead><tr>' +
-      '<th>名称</th><th>网址正则</th><th>Base URL</th><th>Agent ID</th><th>TTS定位</th><th>输入定位</th><th>Token</th><th>模式</th><th class="profile-op"></th>' +
+      '<th>名称</th><th>网址正则</th><th>Base URL</th><th>Agent ID</th><th>TTS定位</th><th>输入定位</th><th>提示词</th><th>Token</th><th>模式</th><th class="profile-op"></th>' +
       '</tr></thead>';
     const tbody = document.createElement('tbody');
     tbody.className = 'profile-rows';

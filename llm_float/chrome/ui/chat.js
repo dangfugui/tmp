@@ -249,7 +249,127 @@ function makeMeta(getText) {
 /* ---------- messages ---------- */
 let restoring = false; // 恢复历史时不重复存
 let currentProfileName = ""; // 当前 agent 名（历史按 agent 分 key）
-function historyKey() { return "chat_history_" + (currentProfileName || "default"); }
+let currentConvId = ""; // 当前会话 ID
+let convList = []; // [{id, title, createdAt}]
+
+function convListKey() { return "chat_conv_list_" + (currentProfileName || "default"); }
+function convKey(convId) { return "chat_conv_" + (currentProfileName || "default") + "_" + convId; }
+function currentConvKey() { return convKey(currentConvId); }
+// 兼容旧代码：返回当前会话的存储 key
+function historyKey() { return currentConvKey(); }
+
+function fmtTitle(ts, firstUserText) {
+  const d = new Date(ts);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  let title = mm + "-" + dd + " " + hh + ":" + mi;
+  if (firstUserText) {
+    const t = firstUserText.replace(/\s+/g, " ").slice(0, 20);
+    title += " " + t;
+  }
+  return title;
+}
+
+// 保存一条消息到当前会话
+function saveMessage(role, text, detail) {
+  if (!currentConvId || !text) return;
+  const key = currentConvKey();
+  try {
+    chrome.storage.local.get({ [key]: [] }, (d) => {
+      const h = (d[key] || []).slice(-99);
+      h.push(detail ? { role, text, detail } : { role, text });
+      chrome.storage.local.set({ [key]: h });
+    });
+  } catch (e) { /* 忽略 */ }
+}
+
+// 加载会话列表并刷新下拉框
+function loadConvList() {
+  try {
+    chrome.storage.local.get({ [convListKey()]: [] }, (d) => {
+      convList = d[convListKey()] || [];
+      const sel = document.getElementById("chat-conv");
+      if (!sel) return;
+      sel.innerHTML = "";
+      convList.forEach((c) => {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.title || ("会话 " + c.id);
+        sel.appendChild(opt);
+      });
+      // "新建会话" 选项
+      const optNew = document.createElement("option");
+      optNew.value = "__new__";
+      optNew.textContent = "+ 新建会话";
+      sel.appendChild(optNew);
+      if (currentConvId) sel.value = currentConvId;
+    });
+  } catch (e) { /* 忽略 */ }
+}
+
+// 创建新会话并切换
+function createNewConversation() {
+  const id = String(Date.now());
+  const ts = Number(id);
+  const entry = { id, title: fmtTitle(ts), createdAt: ts };
+  convList.unshift(entry);
+  const maxConv = parseInt((currentProfileCache && currentProfileCache.maxConversations) || "20", 10) || 20;
+  if (convList.length > maxConv) {
+    const removed = convList.pop();
+    try { chrome.storage.local.remove([convKey(removed.id)]); } catch (e) {}
+  }
+  try {
+    chrome.storage.local.set({ [convListKey()]: convList });
+  } catch (e) { /* 忽略 */ }
+  currentConvId = id;
+  llmMessages = [];
+  messagesEl.innerHTML = "";
+  addMessage("bot", WELCOME);
+  loadConvList();
+}
+
+// 切换到指定会话
+function switchConversation(convId) {
+  if (!convId || convId === currentConvId) return;
+  currentConvId = convId;
+  llmMessages = [];
+  messagesEl.innerHTML = "";
+  restoring = true;
+  try {
+    chrome.storage.local.get({ [convKey(convId)]: [] }, (d) => {
+      const h = d[convKey(convId)] || [];
+      if (h.length === 0) {
+        addMessage("bot", WELCOME);
+      } else {
+        h.forEach((m) => addMessage(m.role, m.text, m.detail));
+        llmMessages = h
+          .filter((m) => m.role === "user" || m.role === "bot")
+          .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
+      }
+      restoring = false;
+      scrollToEnd();
+      loadConvList();
+    });
+  } catch (e) {
+    restoring = false;
+    addMessage("bot", WELCOME);
+  }
+}
+
+// 首次保存用户消息时更新会话标题
+function updateConvTitle(firstUserText) {
+  if (!currentConvId) return;
+  const c = convList.find((x) => x.id === currentConvId);
+  if (c && (!c.title || c.title.indexOf("会话 ") === 0 || c.title.trim().length <= 14)) {
+    c.title = fmtTitle(c.createdAt || Number(currentConvId), firstUserText);
+    try {
+      chrome.storage.local.set({ [convListKey()]: convList });
+      loadConvList();
+    } catch (e) {}
+  }
+}
 
 function addMessage(role, text, detail) {
   const msg = el("div", `msg ${role}`);
@@ -273,17 +393,7 @@ function addMessage(role, text, detail) {
       msg.append(bubble, detailEl);
       messagesEl.appendChild(msg);
       scrollToEnd();
-      // 持久化消息历史（按 agent 分 key，导航后自动恢复，最多 100 条）
-      if (!restoring && text) {
-        const key = historyKey();
-        try {
-          chrome.storage.local.get({ [key]: [] }, (d) => {
-            const h = (d[key] || []).slice(-99);
-            h.push({ role, text, detail });
-            chrome.storage.local.set({ [key]: h });
-          });
-        } catch (e) { /* 忽略 */ }
-      }
+      if (!restoring && text) saveMessage(role, text, detail);
       return;
     }
   } else {
@@ -292,17 +402,7 @@ function addMessage(role, text, detail) {
   msg.append(bubble, makeMeta(() => bubble.innerText));
   messagesEl.appendChild(msg);
   scrollToEnd();
-  // 持久化消息历史（按 agent 分 key，导航后自动恢复，最多 100 条）
-  if (!restoring && text) {
-    const key = historyKey();
-    try {
-      chrome.storage.local.get({ [key]: [] }, (d) => {
-        const h = (d[key] || []).slice(-99);
-        h.push({ role, text });
-        chrome.storage.local.set({ [key]: h });
-      });
-    } catch (e) { /* 忽略 */ }
-  }
+  if (!restoring && text) saveMessage(role, text);
 }
 
 
@@ -385,17 +485,7 @@ function finishReply(error) {
   if (botEl && pendingBotText !== null) {
     const finalText = pendingBotText;
     botEl.querySelector(".bubble").innerHTML = renderMarkdown(finalText);
-    // 存 bot 最终文本到历史
-    if (finalText) {
-      const key = historyKey();
-      try {
-        chrome.storage.local.get({ [key]: [] }, (d) => {
-          const h = (d[key] || []).slice(-99);
-          h.push({ role: "bot", text: finalText });
-          chrome.storage.local.set({ [key]: h });
-        });
-      } catch (e) { /* 忽略 */ }
-    }
+    if (finalText) saveMessage("bot", finalText);
     pendingBotText = null;
   }
   botEl = null;
@@ -450,7 +540,8 @@ function refreshProfileCache() {
         currentProfileCache = {
           profiles: d.chat_profiles || [],
           name: d.active_profile_name || "",
-          contextTurns: parseInt(d.context_turns || "10", 10) || 10
+          contextTurns: parseInt(d.context_turns || "10", 10) || 10,
+          maxConversations: parseInt(d.max_conversations || "20", 10) || 20
         };
         resolve();
       });
@@ -653,14 +744,7 @@ async function dispatchTool(name, args) {
     const argsStr = Object.keys(args || {}).length ? JSON.stringify(args, null, 2) : "（无参数）";
     const resultStr = JSON.stringify(r, null, 2).slice(0, 2000); // 详情截断，省空间
     const toolDetail = "▼ 参数\n" + argsStr + "\n\n▼ 结果\n" + resultStr;
-    try {
-      const key = historyKey();
-      chrome.storage.local.get({ [key]: [] }, (d) => {
-        const h = (d[key] || []).slice(-99);
-        h.push({ role: "tool", text: toolText, detail: toolDetail });
-        chrome.storage.local.set({ [key]: h });
-      });
-    } catch (e) {}
+    saveMessage("tool", toolText, toolDetail);
   }
   return r;
 }
@@ -827,31 +911,46 @@ function send() {
     return;
   }
 
-  addMessage("user", text);
-  inputEl.value = "";
-  autoResize();
-
+  // 先刷新配置缓存，再拼接提示词（确保拿到最新 profile.prompt）
   setBusy(true);
   showTyping();
-
-  // 分发前先刷新配置缓存（设置页保存后无需刷新页面即生效）
   refreshProfileCache().then(() => {
+    // 首次对话拼接提示词：如果 profile 配了 prompt 且历史为空，则拼到用户输入前面
+    const finalText = maybePrependPrompt(text);
+    updateConvTitle(text);
+    addMessage("user", finalText);
+    inputEl.value = "";
+    autoResize();
     // 模式分发：mode='llm' → OpenAI 兼容 + agent 工具；否则 QwenPaw（原有逻辑不变）
-    if (currentProfile().mode === 'llm') openaiChat(text);
-    else qwenChat(text);
+    if (currentProfile().mode === 'llm') openaiChat(finalText);
+    else qwenChat(finalText);
   });
+}
+
+// 首次对话拼接提示词：没有用户消息时（首次），如果 profile 配了 prompt 就拼上去
+function maybePrependPrompt(text) {
+  try {
+    if (messagesEl.querySelector(".msg.user")) return text;
+    const p = currentProfile();
+    if (p && p.prompt && String(p.prompt).trim()) {
+      return String(p.prompt).trim() + "\n\n" + text;
+    }
+  } catch (e) { /* 忽略 */ }
+  return text;
 }
 
 /* ---------- Python 桥 / 控制台：外部发送与停止（方法名 = SDK 命令名） ---------- */
 window.assistant.sendText = function (payload) {
   const text = payload && payload.text ? String(payload.text).trim() : "";
   if (!text || busy) return;
-  addMessage("user", text);
   setBusy(true);
   showTyping();
   refreshProfileCache().then(() => {
-    if (currentProfile().mode === 'llm') openaiChat(text);
-    else qwenChat(text);
+    const finalText = maybePrependPrompt(text);
+    updateConvTitle(text);
+    addMessage("user", finalText);
+    if (currentProfile().mode === 'llm') openaiChat(finalText);
+    else qwenChat(finalText);
   });
 };
 window.assistant.stopChat = function () { stopSend(); };
@@ -922,6 +1021,8 @@ window.assistant.setActiveChatProfile = function (payload) {
   // profile 变了：更新当前名 + 重载该 agent 的历史
   if (name && name !== currentProfileName) {
     currentProfileName = name;
+    currentConvId = "";
+    convList = [];
     llmMessages = [];
     restoreHistory();
   }
@@ -934,6 +1035,39 @@ document.getElementById("chat-title").addEventListener("change", (e) => {
   currentProfileName = name;
   restoreHistory(); // 加载该 agent 的历史
   try { chrome.storage.local.set({ active_profile_name: name }); } catch (err) { /* 忽略 */ }
+});
+
+// 会话下拉框切换
+document.getElementById("chat-conv").addEventListener("change", (e) => {
+  const v = e.target.value;
+  if (v === "__new__" || !v) {
+    createNewConversation();
+    return;
+  }
+  switchConversation(v);
+});
+
+// 删除当前选中的会话
+document.getElementById("btn-del-conv").addEventListener("click", () => {
+  const sel = document.getElementById("chat-conv");
+  const convId = sel.value;
+  if (!convId || convId === "__new__") return;
+  // 从列表移除
+  convList = convList.filter((c) => c.id !== convId);
+  try {
+    chrome.storage.local.set({ [convListKey()]: convList });
+    chrome.storage.local.remove([convKey(convId)]);
+  } catch (e) {}
+  // 如果删的是当前会话，切到第一个或新建
+  if (convId === currentConvId) {
+    if (convList.length > 0) {
+      switchConversation(convList[0].id);
+    } else {
+      createNewConversation();
+    }
+  } else {
+    loadConvList();
+  }
 });
 
 window.assistant.setTheme = function (payload) {
@@ -954,10 +1088,7 @@ document.addEventListener(
 document.getElementById("btn-close").addEventListener("click", () => callApi("hide_all"));
 document.getElementById("btn-min").addEventListener("click", () => callApi("hide_all"));
 document.getElementById("btn-clear").addEventListener("click", () => {
-  messagesEl.innerHTML = "";
-  llmMessages = []; // LLM 模式：清空聊天同时清空对话上下文
-  try { chrome.storage.local.set({ [historyKey()]: [] }); } catch (e) {}
-  addMessage("bot", WELCOME);
+  createNewConversation();
 });
 
 /* ---------- init ---------- */
@@ -965,24 +1096,34 @@ function restoreHistory() {
   try {
     chrome.storage.local.get(["active_profile_name"], (d) => {
       if (!currentProfileName) currentProfileName = d.active_profile_name || "";
-      const key = historyKey();
-      chrome.storage.local.get({ [key]: [] }, (d2) => {
-        const h = d2[key] || [];
-        messagesEl.innerHTML = "";
-        if (h.length === 0) { addMessage("bot", WELCOME); return; }
-        restoring = true;
-        // 恢复界面显示（工具调用带详情）
-        h.forEach((m) => addMessage(m.role, m.text, m.detail));
-        // 同时恢复 llmMessages，让 LLM 能看到之前的聊天记录
-        llmMessages = h
-          .filter((m) => m.role === "user" || m.role === "bot")
-          .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
-        restoring = false;
-        scrollToEnd();
+      chrome.storage.local.get({ [convListKey()]: [] }, (d2) => {
+        convList = d2[convListKey()] || [];
+        if (convList.length === 0) {
+          createNewConversation();
+        } else {
+          currentConvId = convList[0].id;
+          loadConvList();
+          chrome.storage.local.get({ [convKey(currentConvId)]: [] }, (d3) => {
+            const h = d3[convKey(currentConvId)] || [];
+            messagesEl.innerHTML = "";
+            if (h.length === 0) {
+              addMessage("bot", WELCOME);
+            } else {
+              restoring = true;
+              h.forEach((m) => addMessage(m.role, m.text, m.detail));
+              llmMessages = h
+                .filter((m) => m.role === "user" || m.role === "bot")
+                .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
+              restoring = false;
+              scrollToEnd();
+            }
+          });
+        }
       });
     });
   } catch (e) { addMessage("bot", WELCOME); }
 }
+
 restoreHistory();
 inputEl.focus();
 
