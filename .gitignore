@@ -2,3 +2,4 @@ __pycache__
 *.log
 Cache
 webview2_data
+llm_float/llm_float.zip

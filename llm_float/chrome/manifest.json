@@ -55,6 +55,7 @@
     {
       "resources": [
         "ui/*",
+        "data/*",
         "design_preview.html",
         "design-preview.js"
       ],

@@ -77,18 +77,28 @@
     });
   }
 
-  // HOST 容错：允许误填完整接口路径（如 .../v1/audio/speech/stream），剥到根地址再拼接
-  function normalizeHost(h) {
-    return String(h || "").trim().replace(/\/+$/, "");
+  // 斜杠 ≤ 2 个（只有域名）补路径，否则直接用
+  function ttsUrl(host, suffix) {
+    const h = String(host || "").trim();
+    if (!h) return "";
+    const slashCount = (h.match(/\//g) || []).length;
+    if (slashCount <= 2) return h.replace(/\/+$/, "") + suffix;
+    return h;
   }
 
   // HOST 必须带协议（如 wss://llm.nucc.com）；不自动补协议，未带协议视为无效由调用方回退
   function buildWsUrl(host, model, apiKey) {
-    let h = normalizeHost(host);
+    let h = String(host || "").trim();
     if (!h || !/^[a-z]+:\/\//i.test(h)) return "";
     h = h.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:");
-    let url = h + "/v1/audio/speech/stream?model=" + encodeURIComponent(model || "qwen3-tts");
-    // 浏览器 WebSocket 无法携带自定义请求头（Authorization），API Key 拼入 query 尝试鉴权
+    h = h.replace(/\/+$/, "");
+    const slashCount = (h.match(/\//g) || []).length;
+    let url;
+    if (slashCount <= 2) {
+      url = h + "/v1/audio/speech/stream?model=" + encodeURIComponent(model || "qwen3-tts");
+    } else {
+      url = h + (h.indexOf("?") >= 0 ? "&" : "?") + "model=" + encodeURIComponent(model || "qwen3-tts");
+    }
     if (apiKey) url += "&api_key=" + encodeURIComponent(apiKey);
     return url;
   }
@@ -129,11 +139,13 @@
   // HTTP 非流式 TTS（/v1/audio/speech，OpenAI 风格 POST）：网络在 background 执行（可带 Authorization 头，避开 Mixed Content）
   function httpTtsSpeak(text, cfg) {
     return new Promise((resolve) => {
-      const h = normalizeHost(cfg.tts_http_host);
+      const h = String(cfg.tts_http_host || "").trim();
       if (!h || !/^https?:\/\//i.test(h)) {
-        console.warn("[llm-float][tts] HTTP TTS: HOST 未配置或未带 http(s):// 协议，回退浏览器合成 (当前值: '" + String(cfg.tts_http_host || "").trim() + "')");
+        console.warn("[llm-float][tts] HTTP TTS: HOST 未配置或未带 http(s):// 协议，回退浏览器合成 (当前值: '" + h + "')");
         resolve(false); return;
       }
+      const httpSlashCount = (h.match(/\//g) || []).length;
+      const ttsEndpoint = httpSlashCount <= 2 ? h.replace(/\/+$/, "") + "/v1/audio/speech" : h;
       const headers = { "Content-Type": "application/json" };
       if (cfg.tts_http_api_key) headers["Authorization"] = "Bearer " + cfg.tts_http_api_key;
       const body = {
@@ -145,11 +157,12 @@
       };
       if (cfg.tts_http_language) body.language = cfg.tts_http_language;
       if (cfg.tts_http_instructions) body.instructions = cfg.tts_http_instructions;
-      console.log("[llm-float][tts] HTTP TTS 发起: POST " + h + "/v1/audio/speech", body);
+      const ttsStart = Date.now();
+      console.log("[llm-float][tts] HTTP TTS 发起: POST " + ttsEndpoint, body);
       let settled = false;
       const timeout = setTimeout(() => { if (!settled) { settled = true; resolve(false); } }, 35000);
       try {
-        chrome.runtime.sendMessage({ type: "llm_tts_http", url: h + "/v1/audio/speech", headers, body }, (resp) => {
+        chrome.runtime.sendMessage({ type: "llm_tts_http", url: ttsEndpoint, headers, body }, (resp) => {
           if (settled) return;
           settled = true;
           clearTimeout(timeout);
@@ -165,7 +178,7 @@
           const arr = new Uint8Array(bin.length);
           for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
           const audioBuf = arr.buffer;
-          console.log("[llm-float][tts] HTTP TTS 成功: format=" + fmt + ", size=" + audioBuf.byteLength + "B (" + (audioBuf.byteLength / 1024).toFixed(1) + " KB)");
+          console.log("[llm-float][tts] HTTP TTS 成功, 耗时:", ((Date.now()-ttsStart)/1000).toFixed(2)+"s, format=" + fmt + ", size=" + audioBuf.byteLength + "B (" + (audioBuf.byteLength / 1024).toFixed(1) + " KB)");
           const play = fmt === "pcm" ? playPcm([audioBuf], Number(cfg.tts_http_sample_rate) || 24000) : playEncoded(audioBuf);
           play.then(() => resolve(true));
         });
@@ -257,37 +270,40 @@
     say(0);
   }
 
-  function speakText(text) {
-    console.log("[llm-float][tts] speakText 进入: '" + text + "'");
+  function speakText(text, background) {
+    console.log("[llm-float][tts] speakText 进入: '" + text + "'" + (background ? " (后台)" : ""));
     try {
-      callCommand("stopAsr", {}); // 互斥：朗读时停止正在进行的识别（经命令表，asr 未注册无副作用）
+      callCommand("stopAsr", {});
       const sentences = String(text).split(/[。！？!?；;]/).map(s => s.trim()).filter(Boolean);
       if (!sentences.length) return;
       getTtsConfig().then((cfg) => {
         const mode = cfg.tts_mode || "stream";
         if (mode === "off") {
-          console.warn("[llm-float][tts] speakText 已跳过：TTS 开关为 off（设置 → 字幕（TTS）标题栏三态）");
-          return; // 播报已关闭（标题栏三态：关）
+          console.warn("[llm-float][tts] speakText 已跳过：TTS 开关为 off");
+          return;
         }
-        openPanel("bubble");
-        pushBubble("setMode", { mode: "subtitle" }); // 激活字幕区（否则气泡只显示空窗口）
-        pushBubble("setTheme", { theme: currentTheme });
+        if (!background) {
+          openPanel("bubble");
+          pushBubble("setMode", { mode: "subtitle" });
+          pushBubble("setTheme", { theme: currentTheme });
+        }
         ttsCanceled = false;
         const fullText = String(text).trim();
-        // 字幕先显示（TTS 接口为整段合成，字幕同步显示整段）
         setUi({ bubble: { mode: "subtitle" }, tts: { speaking: true, current: fullText } });
         reportToBridge("onTtsSentence", { text: fullText, index: 1, total: 1 });
-        pushBubble("onTtsSentence", { text: fullText });
-        const runner = mode === "http" ? httpTtsSpeak : wsTtsSpeak; // 按设置选择接口
+        if (!background) pushBubble("onTtsSentence", { text: fullText });
+        const runner = mode === "http" ? httpTtsSpeak : wsTtsSpeak;
         runner(text, cfg).then((ok) => {
           if (ttsCanceled) return;
           if (ok) {
             setUi({ tts: { speaking: false, current: "" } });
             reportToBridge("onTtsIdle", {});
-            const hideTime = Number(cfg.tts_hide_time) || 1;
-            setTimeout(() => closePanel("bubble"), hideTime * 1000);
+            if (!background) {
+              const hideTime = Number(cfg.tts_hide_time) || 1;
+              setTimeout(() => closePanel("bubble"), hideTime * 1000);
+            }
           } else {
-            legacySpeakSentences(sentences); // 未配置 HOST / 接口失败 → 回退
+            legacySpeakSentences(sentences);
           }
         });
       });
@@ -295,6 +311,6 @@
   }
 
 /* ========== 功能单元注册：命令 ========== */
-registerCommand("speakText", (p) => { speakText((p && p.text) || ""); return { ok: true }; });
+registerCommand("speakText", (p) => { speakText((p && p.text) || "", (p && p.background) || false); return { ok: true }; });
 registerCommand("stopSpeak", () => { stopContentTts(); closePanel("bubble"); return { ok: true }; });
 registerCommand("startTtsTarget", () => { startTtsTarget(); return { ok: true }; });

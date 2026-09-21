@@ -16,9 +16,13 @@
   var asrAnalyser = null;
   var asrVolumeRaf = null;
 
-  // HOST 容错：允许误填完整接口路径（如 .../v1/audio/transcriptions），剥到根地址再拼接
-  function normalizeHost(h) {
-    return String(h || "").trim().replace(/\/+$/, "");
+  // 如果只填了域名（斜杠 ≤ 2 个），补 /v1/audio/transcriptions；否则直接用
+  function asrUrl(h) {
+    const host = String(h || "").trim();
+    if (!host) return "";
+    const slashCount = (host.match(/\//g) || []).length;
+    if (slashCount <= 2) return host.replace(/\/+$/, "") + "/v1/audio/transcriptions";
+    return host;
   }
 
   function getAsrConfig() {
@@ -133,7 +137,7 @@
   }
 
   // ---------- 非流式：MediaRecorder 录音 ----------
-  function startMediaRecord() {
+  function startMediaRecord(existingStream) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === "undefined") {
       showAsrFail("当前页面不支持麦克风录音（需要 HTTPS 或 localhost 环境）");
       return;
@@ -141,8 +145,7 @@
     asrStopIntent = false;
     asrMuted = false;
     openAsrUi();
-    console.log("[llm-float][asr] 请求麦克风权限...");
-    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+    const doStart = (stream) => {
       if (asrMuted) {
         // 权限等待期间已被停止（互斥/关闭），不启动录音并释放麦克风
         console.log("[llm-float][asr] 权限等待期间被停止，释放麦克风");
@@ -210,11 +213,18 @@
           tick();
         });
       } catch (e) { console.warn("[llm-float][asr] 音量分析启动失败:", e); }
-    }).catch((err) => {
-      asrActive = false;
-      console.error("[llm-float][asr] 麦克风不可用:", err && err.message ? err.message : String(err));
-      showAsrFail("麦克风不可用：" + (err && err.message ? err.message : String(err)));
-    });
+    };
+    if (existingStream) {
+      console.log("[llm-float][asr] 复用已有麦克风流（常驻唤醒）");
+      doStart(existingStream);
+    } else {
+      console.log("[llm-float][asr] 请求麦克风权限...");
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(doStart).catch((err) => {
+        asrActive = false;
+        console.error("[llm-float][asr] 麦克风不可用:", err && err.message ? err.message : String(err));
+        showAsrFail("麦克风不可用：" + (err && err.message ? err.message : String(err)));
+      });
+    }
   }
 
   function onMediaStopped() {
@@ -232,10 +242,11 @@
     showAsrText("识别中…");
     pushBubble("onAsrState", { state: "recognizing" });
     reportToBridge("onAsrState", { state: "recognizing" });
+    const asrStart = Date.now();
     getAsrConfig().then((cfg) => {
-      const hostNorm = normalizeHost(cfg.asr_host);
+      const asrEndpoint = asrUrl(cfg.asr_host);
       console.log("[llm-float][asr] 识别配置: host='" + String(cfg.asr_host || "") + "', mode='" + String(cfg.asr_mode || "") + "', model=" + (cfg.asr_model || "qwen3-asr") + ", language=" + (cfg.asr_language || "zh"));
-      if (hostNorm && /^https?:\/\//i.test(hostNorm)) {
+      if (asrEndpoint && /^https?:\/\//i.test(asrEndpoint)) {
         httpAsrRecognize(blob, cfg).then((text) => {
           if (!text) { showAsrFail("识别无结果（接口返回空）"); return; }
           // 先在气泡里显示结果，停留指定时间再发到聊天窗
@@ -243,7 +254,7 @@
           const delay = Number(cfg.asr_send_delay) || 2;
           setTimeout(() => sendResultToChat(text), delay * 1000);
         }).catch((e) => {
-          console.warn("[llm-float][asr] HTTP 识别失败，尝试浏览器自带识别兜底：" + (e && e.message ? e.message : String(e)));
+          console.warn("[llm-float][asr] HTTP 识别失败，耗时:", ((Date.now()-asrStart)/1000).toFixed(2)+"s，尝试浏览器自带识别兜底：" + (e && e.message ? e.message : String(e)));
           // 兜底：用浏览器 SpeechRecognition 重新识别
           const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
           if (SR) {
@@ -319,10 +330,10 @@
   // content 做 webm→wav 转换，base64 传 background 发请求（避开 CORS + 避免 ArrayBuffer 损坏）
   function httpAsrRecognize(blob, cfg) {
     return new Promise((resolve, reject) => {
-      const h = normalizeHost(cfg.asr_host);
+      const h = asrUrl(cfg.asr_host);
       const params = { model: cfg.asr_model || "qwen3-asr", language: cfg.asr_language || "zh" };
       webmToWav(blob).then((wavBlob) => {
-        console.log("[llm-float][asr] HTTP ASR: POST " + h + "/v1/audio/transcriptions", params, "原始:", blob.size, "B", "→ WAV:", wavBlob.size, "B");
+        console.log("[llm-float][asr] HTTP ASR: POST " + h, params, "原始:", blob.size, "B", "→ WAV:", wavBlob.size, "B");
         const headers = {};
         if (cfg.asr_api_key) headers["Authorization"] = "Bearer " + cfg.asr_api_key;
         wavBlob.arrayBuffer().then((ab) => {
@@ -332,7 +343,7 @@
           const b64 = btoa(bin);
           chrome.runtime.sendMessage({
             type: "llm_asr",
-            url: h + "/v1/audio/transcriptions",
+            url: h,
             headers,
             audioB64: b64,
             model: params.model,
@@ -348,7 +359,7 @@
               reject(new Error((resp && resp.error) || "ASR 请求失败"));
               return;
             }
-            console.log("[llm-float][asr] HTTP ASR 成功，识别结果:", resp.text || "");
+            console.log("[llm-float][asr] HTTP ASR 成功，耗时:", ((Date.now()-asrStart)/1000).toFixed(2)+"s，识别结果:", resp.text || "");
             resolve(resp.text || "");
           });
         }).catch((e) => {
@@ -367,7 +378,7 @@
           const b64 = btoa(bin);
           chrome.runtime.sendMessage({
             type: "llm_asr",
-            url: h + "/v1/audio/transcriptions",
+            url: h,
             headers,
             audioB64: b64,
             model: params.model,
@@ -383,7 +394,7 @@
               reject(new Error((resp && resp.error) || "ASR 请求失败"));
               return;
             }
-            console.log("[llm-float][asr] HTTP ASR 降级成功，识别结果:", resp.text || "");
+            console.log("[llm-float][asr] HTTP ASR 降级成功，耗时:", ((Date.now()-asrStart)/1000).toFixed(2)+"s，识别结果:", resp.text || "");
             resolve(resp.text || "");
           });
         }).catch((e) => {
@@ -568,9 +579,13 @@
           const now = Date.now();
           if (peak > thresh && now > wakeCooldown) {
             console.log("[llm-float][asr] 常驻唤醒: 触发! peak=" + peak.toFixed(3) + " > thresh=" + thresh.toFixed(3));
-            wakeCooldown = now + 10000; // 10 秒冷却
-            wakeStop();
-            startAsrRecording();
+            wakeCooldown = now + 10000;
+            const keepStream = wakeStream;
+            wakeStream = null;
+            if (wakeCtx) { try { wakeCtx.close(); } catch (e) {} wakeCtx = null; }
+            wakeAnalyser = null;
+            if (wakeRaf) { clearTimeout(wakeRaf); wakeRaf = null; }
+            startMediaRecord(keepStream);
             return;
           }
           wakeRaf = setTimeout(loop, 200);

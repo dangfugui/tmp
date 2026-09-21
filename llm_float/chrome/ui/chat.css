@@ -449,3 +449,26 @@ body.maximized .msg.bot { max-width: 100%; }
   transition: color .15s;
 }
 #btn-del-conv:hover { color: #ef4444; }
+#btn-tts-toggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  margin-left: 4px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  opacity: .6;
+  transition: opacity .15s, color .15s;
+}
+#btn-tts-toggle.on {
+  color: var(--accent);
+  opacity: 1;
+}
+#btn-tts-toggle:hover { opacity: 1; }
+.mermaid-wrap {
+  margin: 8px 0;
+  overflow-x: auto;
+}

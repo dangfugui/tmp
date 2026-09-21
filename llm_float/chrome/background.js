@@ -229,7 +229,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       fetch(msg.url, { method: "POST", headers: msg.headers || {}, body: JSON.stringify(msg.body || {}) })
         .then((r) => {
           console.log("[tts-bg] <<< Status:", r.status, r.statusText, JSON.stringify(Object.fromEntries([...r.headers.entries()])));
-          if (!r.ok) throw new Error("HTTP " + r.status);
+          if (!r.ok) {
+            r.text().then((t) => console.error("[tts-bg] 错误响应:", r.status, r.statusText, t.slice(0, 500))).catch(() => {});
+            throw new Error("HTTP " + r.status + " " + r.statusText);
+          }
           return r.arrayBuffer();
         })
         .then((buf) => {
@@ -241,7 +244,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: true, dataB64: b64, format: (msg.body && msg.body.response_format) || "pcm" });
         })
         .catch((e) => {
-          console.error("[tts-bg] XXX 失败:", e.message);
+          console.error("[tts-bg] 请求失败:", e.message);
           sendResponse({ ok: false, error: String(e) });
         });
       return true;
@@ -265,7 +268,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const resp = await fetch(msg.url, fetchOpts);
           const raw = await resp.text();
           if (!resp.ok) { sendResponse({ ok: false, error: "HTTP " + resp.status + " body=" + raw.slice(0, 200) }); return; }
-          let d; try { d = JSON.parse(raw); } catch (e) { sendResponse({ ok: false, error: "JSON parse: " + raw.slice(0, 200) }); return; }
+          let d; try { d = JSON.parse(raw); } catch (e) { sendResponse({ ok: false, error: "HTTP " + resp.status + " (非JSON响应): " + raw.slice(0, 200) }); return; }
           sendResponse({ ok: true, text: (d && d.text) || "" });
         } catch (e) {
           sendResponse({ ok: false, error: String(e) });

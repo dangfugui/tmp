@@ -41,10 +41,16 @@ function renderMarkdown(src) {
   if (!src) return "";
   let text = escapeHtml(src);
 
-  // 代码块 ```lang ... ```（转义后内容，占位符避免被后续规则破坏）
+  // 代码块 ```lang ... ```（mermaid 特殊处理为图表）
   const codeBlocks = [];
   text = text.replace(/```(\w*)\r?\n([\s\S]*?)```/g, (m, lang, code) => {
-    codeBlocks.push('<pre class="md-pre"><code>' + code.replace(/\n$/, "") + "</code></pre>");
+    if (lang && lang.toLowerCase() === "mermaid") {
+      // 反转义 HTML 实体（escapeHtml 先跑过，mermaid 需要原始字符）
+      const mmCode = code.replace(/\n$/, "").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+      codeBlocks.push('<div class="mermaid-wrap"><div class="mermaid">' + mmCode + "</div></div>");
+    } else {
+      codeBlocks.push('<pre class="md-pre"><code>' + code.replace(/\n$/, "") + "</code></pre>");
+    }
     return "\u0000CB" + (codeBlocks.length - 1) + "\u0000";
   });
 
@@ -197,11 +203,18 @@ function timeLabel() {
 }
 
 function scrollToEnd(force) {
-  // 如果用户在往上翻（距底部 > 80px），不强行拉到底
-  // force=true 时（新消息/发送）才强制拉到底
   const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
   if (force || nearBottom) {
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    // 临时关掉 smooth 滚动，直接跳到最底（流式回复时 smooth 会跟不上）
+    const prev = messagesEl.style.scrollBehavior;
+    messagesEl.style.scrollBehavior = "auto";
+    requestAnimationFrame(() => {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      requestAnimationFrame(() => {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        messagesEl.style.scrollBehavior = prev;
+      });
+    });
   }
 }
 
@@ -391,7 +404,14 @@ function switchConversation(convId) {
           .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
       }
       restoring = false;
-      scrollToEnd();
+      const mmBlocks = document.querySelectorAll(".mermaid");
+      setTimeout(() => {
+        Promise.all(
+          Array.from(mmBlocks).map((el) => renderMermaid(el))
+        ).finally(() => {
+          scrollToEnd(true);
+        });
+      }, 300);
       loadConvList();
     });
   } catch (e) {
@@ -522,18 +542,75 @@ function stopSend() {
   abortChat();
 }
 
+let ttsAutoSpeak = false;
 function finishReply(error) {
   removeTyping();
   if (botEl && pendingBotText !== null) {
     const finalText = pendingBotText;
     botEl.querySelector(".bubble").innerHTML = renderMarkdown(finalText);
+    botEl.querySelectorAll(".mermaid").forEach((el) => renderMermaid(el));
     if (finalText) saveMessage("bot", finalText);
+    // 自动朗读（后台，不弹气泡）
+    if (ttsAutoSpeak && finalText && !error) {
+      try {
+        window.parent.postMessage({ kind: "chat", action: "tts_speak_bg", text: finalText }, "*");
+      } catch (e) {}
+    }
     pendingBotText = null;
   }
   botEl = null;
   setBusy(false);
   inputEl.focus();
   if (error) addMessage("bot", error);
+}
+// TTS 朗读开关
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btn-tts-toggle");
+  if (btn) {
+    const onIcon = btn.querySelector(".tts-on-icon");
+    const offIcon = btn.querySelector(".tts-off-icon");
+    btn.addEventListener("click", () => {
+      ttsAutoSpeak = !ttsAutoSpeak;
+      btn.classList.toggle("on", ttsAutoSpeak);
+      if (onIcon && offIcon) {
+        onIcon.style.display = ttsAutoSpeak ? "" : "none";
+        offIcon.style.display = ttsAutoSpeak ? "none" : "";
+      }
+    });
+  }
+});
+
+// mermaid 初始化（静态加载）
+if (window.mermaid) {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: "dark",
+    securityLevel: "loose",
+    flowchart: { useMaxWidth: true, htmlLabels: true, curve: "basis" }
+  });
+}
+async function renderMermaid(el) {
+  if (!el || !window.mermaid) return;
+  try {
+    // 等元素有实际宽度（刷新后面板可能还没显示）
+    let retries = 0;
+    while (retries < 15) {
+      const w = el.getBoundingClientRect().width;
+      if (w > 50) break;
+      await new Promise((r) => setTimeout(r, 200));
+      retries++;
+    }
+    el.removeAttribute("data-processed");
+    el.removeAttribute("data-mermaid");
+    await mermaid.run({ nodes: [el] });
+    const svg = el.querySelector("svg");
+    if (svg) {
+      svg.style.maxWidth = "100%";
+      svg.style.height = "auto";
+    }
+  } catch (e) {
+    console.warn("[llm-float][mermaid] 渲染失败:", e && e.message ? e.message : e);
+  }
 }
 
 window.assistant = window.assistant || {};
@@ -1181,7 +1258,16 @@ function restoreHistory() {
                   .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
               }
               restoring = false;
-              scrollToEnd();
+              // 历史会话渲染后：延迟渲染 mermaid（等 iframe 可见有尺寸）
+              const mmBlocks = document.querySelectorAll(".mermaid");
+              console.log("[llm-float][mermaid] 历史会话检测到", mmBlocks.length, "个 mermaid 块");
+              setTimeout(() => {
+                Promise.all(
+                  Array.from(mmBlocks).map((el) => renderMermaid(el))
+                ).finally(() => {
+                  scrollToEnd(true);
+                });
+              }, 300);
             }
           });
         }

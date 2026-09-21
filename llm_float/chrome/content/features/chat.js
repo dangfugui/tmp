@@ -54,4 +54,8 @@ registerPanelMessage("chat", (kind, data) => {
     }
   }
   else if (data.action === "chat_busy") setUi({ chat: { open: true, busy: !!data.busy } });
+  else if (data.action === "tts_speak_bg") {
+    // 后台朗读，不弹 TTS 气泡
+    if (data.text) callCommand("speakText", { text: data.text, background: true });
+  }
 });
