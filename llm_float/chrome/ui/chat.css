@@ -472,3 +472,18 @@ body.maximized .msg.bot { max-width: 100%; }
   margin: 8px 0;
   overflow-x: auto;
 }
+.md-details {
+  margin: 4px 0;
+  padding: 4px 8px;
+  background: var(--bg-input, rgba(128,128,128,.1));
+  border-radius: 6px;
+  font-size: 12px;
+}
+.md-details summary {
+  cursor: pointer;
+  opacity: .7;
+  font-size: 12px;
+}
+.md-details[open] summary {
+  opacity: 1;
+}

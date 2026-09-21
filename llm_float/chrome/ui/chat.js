@@ -40,6 +40,11 @@ function escapeHtml(s) {
 function renderMarkdown(src) {
   if (!src) return "";
   let text = escapeHtml(src);
+  // <details><summary> 折叠块：还原成 HTML（GitHub Markdown 风格）
+  text = text.replace(/&lt;details&gt;([\s\S]*?)&lt;\/details&gt;/g, (m, inner) => {
+    inner = inner.replace(/&lt;summary&gt;(.*?)&lt;\/summary&gt;/, '<summary>$1</summary>');
+    return '<details class="md-details">' + inner + '</details>';
+  });
 
   // 代码块 ```lang ... ```（mermaid 特殊处理为图表）
   const codeBlocks = [];
@@ -459,7 +464,7 @@ function addMessage(role, text, detail) {
       return;
     }
   } else {
-    bubble.textContent = text; // 用户消息原样显示
+    bubble.innerHTML = renderMarkdown(text); // 用户消息也渲染 Markdown
   }
   msg.append(bubble, makeMeta(() => bubble.innerText));
   messagesEl.appendChild(msg);
@@ -1063,7 +1068,7 @@ function maybePrependPrompt(text) {
     if (messagesEl.querySelector(".msg.user")) return text;
     const p = currentProfile();
     if (p && p.prompt && String(p.prompt).trim()) {
-      return String(p.prompt).trim() + "\n\n" + text;
+      return "<details><summary>📋 已附加提示词</summary>\n\n" + String(p.prompt).trim() + "\n\n</details>\n\n" + text;
     }
   } catch (e) { /* 忽略 */ }
   return text;
