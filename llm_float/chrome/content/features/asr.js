@@ -242,7 +242,6 @@
     showAsrText("识别中…");
     pushBubble("onAsrState", { state: "recognizing" });
     reportToBridge("onAsrState", { state: "recognizing" });
-    const asrStart = Date.now();
     getAsrConfig().then((cfg) => {
       const asrEndpoint = asrUrl(cfg.asr_host);
       console.log("[llm-float][asr] 识别配置: host='" + String(cfg.asr_host || "") + "', mode='" + String(cfg.asr_mode || "") + "', model=" + (cfg.asr_model || "qwen3-asr") + ", language=" + (cfg.asr_language || "zh"));
@@ -254,7 +253,7 @@
           const delay = Number(cfg.asr_send_delay) || 2;
           setTimeout(() => sendResultToChat(text), delay * 1000);
         }).catch((e) => {
-          console.warn("[llm-float][asr] HTTP 识别失败，耗时:", ((Date.now()-asrStart)/1000).toFixed(2)+"s，尝试浏览器自带识别兜底：" + (e && e.message ? e.message : String(e)));
+          console.warn("[llm-float][asr] HTTP 识别失败，尝试浏览器自带识别兜底：" + (e && e.message ? e.message : String(e)));
           // 兜底：用浏览器 SpeechRecognition 重新识别
           const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
           if (SR) {
@@ -329,6 +328,7 @@
    // 非流式识别：POST /v1/audio/transcriptions（OpenAI 兼容，multipart）
   // content 做 webm→wav 转换，base64 传 background 发请求（避开 CORS + 避免 ArrayBuffer 损坏）
   function httpAsrRecognize(blob, cfg) {
+    const asrStart = Date.now();
     return new Promise((resolve, reject) => {
       const h = asrUrl(cfg.asr_host);
       const params = { model: cfg.asr_model || "qwen3-asr", language: cfg.asr_language || "zh" };

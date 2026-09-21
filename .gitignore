@@ -3,3 +3,4 @@ __pycache__
 Cache
 webview2_data
 llm_float/llm_float.zip
+*.zip

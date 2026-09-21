@@ -58,6 +58,7 @@ const STORAGE_SCHEMA = [
       { key: 'tts_http_instructions', label: '非流式指令', type: 'text', value: '', showWhen: ['http'] },
       // 通用配置
       { key: 'tts_hide_time', label: '播报后关闭窗口(秒)', type: 'number', value: 1, min: 0, max: 10, step: 0.5, showWhen: ['stream', 'http'] },
+      { key: 'tts_max_length', label: 'TTS 最大字符数', type: 'number', value: 50, min: 10, max: 500, step: 10, showWhen: ['stream', 'http'] },
     ],
   },
   {

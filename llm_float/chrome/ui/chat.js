@@ -574,6 +574,17 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btn) {
     const onIcon = btn.querySelector(".tts-on-icon");
     const offIcon = btn.querySelector(".tts-off-icon");
+    // 恢复上次状态
+    try {
+      chrome.storage.local.get({ tts_auto_speak: false }, (d) => {
+        ttsAutoSpeak = !!d.tts_auto_speak;
+        btn.classList.toggle("on", ttsAutoSpeak);
+        if (onIcon && offIcon) {
+          onIcon.style.display = ttsAutoSpeak ? "" : "none";
+          offIcon.style.display = ttsAutoSpeak ? "none" : "";
+        }
+      });
+    } catch (e) {}
     btn.addEventListener("click", () => {
       ttsAutoSpeak = !ttsAutoSpeak;
       btn.classList.toggle("on", ttsAutoSpeak);
@@ -581,6 +592,7 @@ document.addEventListener("DOMContentLoaded", () => {
         onIcon.style.display = ttsAutoSpeak ? "" : "none";
         offIcon.style.display = ttsAutoSpeak ? "none" : "";
       }
+      try { chrome.storage.local.set({ tts_auto_speak: ttsAutoSpeak }); } catch (e) {}
     });
   }
 });

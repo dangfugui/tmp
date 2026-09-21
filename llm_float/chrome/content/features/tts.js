@@ -70,6 +70,7 @@
         chrome.storage.local.get([
           "tts_mode",
           "tts_hide_time",
+          "tts_max_length",
           "tts_ws_host", "tts_ws_api_key", "tts_ws_model", "tts_ws_voice", "tts_ws_language", "tts_ws_speed", "tts_ws_instructions",
           "tts_http_host", "tts_http_api_key", "tts_http_model", "tts_http_voice", "tts_http_response_format", "tts_http_sample_rate", "tts_http_language", "tts_http_speed", "tts_http_instructions"
         ], (d) => resolve(d || {}));
@@ -160,7 +161,7 @@
       const ttsStart = Date.now();
       console.log("[llm-float][tts] HTTP TTS 发起: POST " + ttsEndpoint, body);
       let settled = false;
-      const timeout = setTimeout(() => { if (!settled) { settled = true; resolve(false); } }, 35000);
+      const timeout = setTimeout(() => { if (!settled) { settled = true; console.warn("[llm-float][tts] HTTP TTS timeout 35s, elapsed:", ((Date.now()-ttsStart)/1000).toFixed(2)+"s"); resolve(false); } }, 35000);
       try {
         chrome.runtime.sendMessage({ type: "llm_tts_http", url: ttsEndpoint, headers, body }, (resp) => {
           if (settled) return;
@@ -183,7 +184,7 @@
           play.then(() => resolve(true));
         });
       } catch (e) {
-        if (!settled) { settled = true; clearTimeout(timeout); resolve(false); }
+        if (!settled) { settled = true; clearTimeout(timeout); console.warn("[llm-float][tts] HTTP TTS error, elapsed:", ((Date.now()-ttsStart)/1000).toFixed(2)+"s, err:", e && e.message); resolve(false); }
       }
     });
   }
@@ -228,7 +229,7 @@
         instructions: cfg.tts_ws_instructions || "",
       };
       let settled = false;
-      const timeout = setTimeout(() => { if (!settled) { settled = true; resolve(false); } }, 35000);
+      const timeout = setTimeout(() => { if (!settled) { settled = true; console.warn("[llm-float][tts] HTTP TTS timeout 35s, elapsed:", ((Date.now()-ttsStart)/1000).toFixed(2)+"s"); resolve(false); } }, 35000);
       try {
         chrome.runtime.sendMessage({ type: "llm_tts_ws", url, config, text }, (resp) => {
           if (settled) return;
@@ -242,7 +243,7 @@
           playPcm([resp.pcm], Number(cfg.tts_sample_rate) || 24000).then(() => resolve(true));
         });
       } catch (e) {
-        if (!settled) { settled = true; clearTimeout(timeout); resolve(false); }
+        if (!settled) { settled = true; clearTimeout(timeout); console.warn("[llm-float][tts] HTTP TTS error, elapsed:", ((Date.now()-ttsStart)/1000).toFixed(2)+"s, err:", e && e.message); resolve(false); }
       }
     });
   }
@@ -281,6 +282,19 @@
         if (mode === "off") {
           console.warn("[llm-float][tts] speakText 已跳过：TTS 开关为 off");
           return;
+        }
+        // 超过最大长度只取第一句话
+        const maxLen = Number(cfg.tts_max_length) || 50;
+        if (text.length > maxLen) {
+          const m = text.match(/^.*?([。！？!?；;…\n])/);
+          if (m) {
+            console.log("[llm-float][tts] 文本超过", maxLen, "字，截断为第一句:", m[0].length, "字");
+            text = m[0];
+          } else {
+            text = text.slice(0, maxLen);
+            console.log("[llm-float][tts] 文本超过", maxLen, "字，截断为前", maxLen, "字");
+          }
+          text = text + "如下内容：";
         }
         if (!background) {
           openPanel("bubble");
