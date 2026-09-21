@@ -134,7 +134,7 @@ body[data-theme="synthwave"] .orb[data-state="idle"] { animation: glowPulse 2.6s
 
 /* chat 聊天：气泡浮动 */
 .orb[data-state="chat"] .icon-chat svg { animation: chatBob 2.4s ease-in-out infinite; }
-@keyframes chatBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes chatBob { 0%, 100% { transform: translateY(0) scaleX(-1); } 50% { transform: translateY(-6px) scaleX(-1); } }
 
 
 /* tts 字幕：音量脉动 + 音符上升 */

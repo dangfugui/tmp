@@ -34,5 +34,24 @@ registerCommand("stopChat", () => {
 
 registerPanelMessage("chat", (kind, data) => {
   if (data.action === "hide") { closePanel("chat"); pushOrbState("idle"); }
+  else if (data.action === "maximize") {
+    const f = PANEL_FRAMES.chat;
+    if (!f) return;
+    const maximized = f.dataset.maximized === "1";
+    if (maximized) {
+      f.style.width = "400px"; f.style.height = "620px";
+      placePanel(f, 400, 620, "top-left");
+      f.dataset.maximized = "0";
+      pushChat("setMaximized", { maximized: false });
+    } else {
+      const m = 60;
+      f.style.left = m + "px"; f.style.top = m + "px";
+      f.style.right = "auto"; f.style.bottom = "auto";
+      f.style.width = (window.innerWidth - m * 2) + "px";
+      f.style.height = (window.innerHeight - m * 2) + "px";
+      f.dataset.maximized = "1";
+      pushChat("setMaximized", { maximized: true });
+    }
+  }
   else if (data.action === "chat_busy") setUi({ chat: { open: true, busy: !!data.busy } });
 });

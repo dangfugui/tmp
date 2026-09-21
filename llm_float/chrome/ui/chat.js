@@ -1086,7 +1086,13 @@ document.addEventListener(
 );
 
 document.getElementById("btn-close").addEventListener("click", () => callApi("hide_all"));
-document.getElementById("btn-min").addEventListener("click", () => callApi("hide_all"));
+document.getElementById("btn-max").addEventListener("click", () => window.parent.postMessage({ kind: "chat", action: "maximize" }, "*"));
+window.assistant.setMaximized = function (payload) {
+  const on = !!(payload && payload.maximized);
+  document.body.classList.toggle("maximized", on);
+  document.querySelector("#btn-max .ic-max").style.display = on ? "none" : "";
+  document.querySelector("#btn-max .ic-min").style.display = on ? "" : "none";
+};
 document.getElementById("btn-clear").addEventListener("click", () => {
   createNewConversation();
 });
