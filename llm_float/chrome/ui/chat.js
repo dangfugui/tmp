@@ -196,8 +196,13 @@ function timeLabel() {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function scrollToEnd() {
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+function scrollToEnd(force) {
+  // 如果用户在往上翻（距底部 > 80px），不强行拉到底
+  // force=true 时（新消息/发送）才强制拉到底
+  const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+  if (force || nearBottom) {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
 }
 
 function el(tag, cls, text) {
@@ -284,6 +289,43 @@ function saveMessage(role, text, detail) {
     });
   } catch (e) { /* 忽略 */ }
 }
+
+/* 清理不完整的 tool_calls：assistant 带 tool_calls 但后面没有对应 tool 响应时删掉 */
+function cleanupToolCalls(msgs) {
+  const out = [];
+  for (let i = 0; i < msgs.length; i++) {
+    const m = msgs[i];
+    if (m.role === "assistant" && m.tool_calls && m.tool_calls.length) {
+      // 检查后面是否有对应 tool 响应
+      const ids = new Set(m.tool_calls.map(t => t.id));
+      let j = i + 1;
+      while (j < msgs.length && msgs[j].role === "tool") {
+        ids.delete(msgs[j].tool_call_id);
+        j++;
+      }
+      if (ids.size > 0) {
+        // 有不完整的 tool_calls，跳过这个 assistant 消息和后续 tool 响应
+        i = j - 1;
+        continue;
+      }
+    }
+    out.push(m);
+  }
+  return out;
+}
+
+/* 跳转前刷新：把当前 llmMessages（含 tool_calls）持久化到 storage，新页面恢复上下文 */
+window.assistant.flushState = function () {
+  if (!currentConvId) return;
+  try {
+    // 保存完整 llmMessages（含 tool_calls/tool 对），新页面恢复时用
+    chrome.storage.local.set({
+      [currentConvKey() + "_llm"]: llmMessages.slice(-200)
+    });
+    // 同时刷新会话列表标题
+    updateConvTitle();
+  } catch (e) { /* 忽略 */ }
+};
 
 // 加载会话列表并刷新下拉框
 function loadConvList() {
@@ -392,7 +434,7 @@ function addMessage(role, text, detail) {
       });
       msg.append(bubble, detailEl);
       messagesEl.appendChild(msg);
-      scrollToEnd();
+      scrollToEnd(true);
       if (!restoring && text) saveMessage(role, text, detail);
       return;
     }
@@ -401,7 +443,7 @@ function addMessage(role, text, detail) {
   }
   msg.append(bubble, makeMeta(() => bubble.innerText));
   messagesEl.appendChild(msg);
-  scrollToEnd();
+  scrollToEnd(true);
   if (!restoring && text) saveMessage(role, text);
 }
 
@@ -691,7 +733,7 @@ function addToolMsg(icon, name, summary) {
   });
   msg.append(b, detail);
   messagesEl.appendChild(msg);
-  scrollToEnd();
+  scrollToEnd(false);
   return msg;
 }
 
@@ -701,6 +743,7 @@ const TOOL_ICONS = {
   page_click: "👆", page_set_input: "⌨️", page_get_attr: "📋",
   navigate: "🧭", page_scroll: "📜", page_hover: "🖱️",
   page_wait: "⏳", page_get_html: "📄", page_select: "🎯",
+  page_press_key: "⌨️", page_get_links: "🔗",
 };
 
 async function dispatchTool(name, args) {
@@ -715,20 +758,28 @@ async function dispatchTool(name, args) {
   let summary = "✅";
   if (r.error) {
     summary = "❌ " + r.error;
+    // 页面操作失败时，自动重新观察页面元素，帮 LLM 换选择器
+    if (name.startsWith("page_") && name !== "page_wait") {
+      try {
+        const obs = await bridgeCmd("getPageInfo", {});
+        if (obs && obs.ok && obs.data && obs.data.elements) {
+          const hint = obs.data.elements.map(e => e.index + ". " + e.tag + " " + e.text + " → " + e.selector).join("\n");
+          r.error += "\n\n[自动重观察] 当前页面可交互元素：\n" + hint;
+        }
+      } catch (e) {}
+    }
   } else {
     if (r.content !== undefined) {
-      // 短结果直接显示内容，长的只显示长度
       const short = r.content.length <= 80;
       summary = short ? "✅ " + r.content.replace(/\s+/g, " ").trim().slice(0, 80) : "✅ " + r.content.length + " 字符";
     }
-    else if (r.matches) summary = "✅ " + r.matches.length + " 个匹配" + (r.matches.length <= 5 ? "（" + r.matches.slice(0, 5).join("、") + "）" : "");
+    else if (r.matches) summary = "✅ " + r.matches.length + " 个匹配";
     else if (r.written !== undefined) summary = "✅ 写入 " + r.written + " 字符";
-    else if (r.data && r.data.value !== undefined && String(r.data.value).length <= 80) summary = "✅ " + String(r.data.value).replace(/\s+/g, " ").trim().slice(0, 80);
-    else if (r.data && r.data.selected) summary = "✅ " + (r.data.text || r.data.selected);
-    else if (r.data && r.data.clicked) summary = "✅ " + (r.data.tag || "");
-    else if (r.data && r.data.set) summary = "✅ " + (r.data.tag || "");
-    else if (r.data && r.data.waited) summary = "✅ " + r.data.waited + "ms";
-    else if (r.data && r.data.scrolled) summary = "✅ " + r.data.scrolled;
+    else if (r.action) summary = "✅ " + r.action + (r.selector ? " → " + r.selector : "");
+    else if (r.waited) summary = "✅ " + r.waited + "ms";
+    else if (r.scrolled) summary = "✅ " + r.scrolled;
+    else if (r.links) summary = "✅ " + r.links.length + " 个链接";
+    else summary = "✅";
   }
   if (b) b.textContent = icon + " " + name + "  →  " + summary;
   const detail = msgEl.querySelector(".tool-detail");
@@ -1109,17 +1160,24 @@ function restoreHistory() {
         } else {
           currentConvId = convList[0].id;
           loadConvList();
-          chrome.storage.local.get({ [convKey(currentConvId)]: [] }, (d3) => {
+          const llmKey = convKey(currentConvId) + "_llm";
+          chrome.storage.local.get({ [convKey(currentConvId)]: [], [llmKey]: [] }, (d3) => {
             const h = d3[convKey(currentConvId)] || [];
+            const llmSaved = d3[llmKey] || [];
             messagesEl.innerHTML = "";
-            if (h.length === 0) {
+            if (h.length === 0 && llmSaved.length === 0) {
               addMessage("bot", WELCOME);
             } else {
               restoring = true;
               h.forEach((m) => addMessage(m.role, m.text, m.detail));
-              llmMessages = h
-                .filter((m) => m.role === "user" || m.role === "bot")
-                .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
+              // 优先用完整 llmMessages（含 tool_calls），否则从 UI 消息重建
+              if (llmSaved.length > 0) {
+                llmMessages = cleanupToolCalls(llmSaved);
+              } else {
+                llmMessages = h
+                  .filter((m) => m.role === "user" || m.role === "bot")
+                  .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
+              }
               restoring = false;
               scrollToEnd();
             }

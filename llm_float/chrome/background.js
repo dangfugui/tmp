@@ -273,6 +273,37 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       })();
       return true;
     }
+    case "llm_web_fetch": {
+      // background 发 fetch 不受 CORS 限制（MV3 background service worker）
+      (async () => {
+        try {
+          const url = msg.url || "";
+          if (!/^https?:/i.test(url)) { sendResponse({ ok: false, category: "bad_url", error: "url 需以 http/https 开头" }); return; }
+          const resp = await fetch(url, { redirect: "follow" });
+          const ct = resp.headers.get("content-type") || "";
+          if (!/text|html|json|xml/i.test(ct)) {
+            sendResponse({ ok: true, status: resp.status, contentType: ct, text: "(非文本内容)" }); return;
+          }
+          const html = await resp.text();
+          const text = html
+            .replace(/<script[\s\S]*?<\/script>/gi, "")
+            .replace(/<style[\s\S]*?<\/style>/gi, "")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 8000);
+          sendResponse({ ok: true, status: resp.status, contentType: ct, text });
+        } catch (e) {
+          const m = String((e && e.message) || e);
+          let cat = "unknown";
+          if (/Failed to fetch|NetworkError/i.test(m)) cat = "network";
+          else if (/DNS|ENOTFOUND/i.test(m)) cat = "dns";
+          else if (/timeout/i.test(m)) cat = "timeout";
+          sendResponse({ ok: false, category: cat, error: m });
+        }
+      })();
+      return true;
+    }
     default:
       sendResponse({ ok: false, error: "unknown message: " + msg.type });
       return true;
