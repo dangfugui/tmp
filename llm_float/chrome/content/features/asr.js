@@ -24,7 +24,7 @@
   function getAsrConfig() {
     return new Promise((resolve) => {
       try {
-        chrome.storage.local.get(["asr_mode", "asr_host", "asr_api_key", "asr_model", "asr_language"], (d) => resolve(d || {}));
+        chrome.storage.local.get(["asr_mode", "asr_host", "asr_api_key", "asr_model", "asr_language", "asr_send_delay", "asr_silence_stop", "asr_wake_threshold"], (d) => resolve(d || {}));
       } catch (e) { resolve({}); }
     });
   }
@@ -59,6 +59,8 @@
     setUi({ asr: { listening: false } });
     setTimeout(() => closePanel("bubble"), 2400);
     pushOrbState("idle");
+    // 常驻模式：ASR 结束后重启监听
+    setTimeout(() => { try { wakeStart(); } catch (e) {} }, 500);
   }
   function releaseMic() {
     if (asrVolumeRaf) { clearTimeout(asrVolumeRaf); asrVolumeRaf = null; }
@@ -114,6 +116,8 @@
         callCommand("showChat", {});
         pushChat("sendText", { text: t });
       }, 120);
+      // 常驻模式：ASR 结束后重启监听
+      setTimeout(() => { try { wakeStart(); } catch (e) {} }, 2000);
     });
   }
 
@@ -171,24 +175,40 @@
         asrAnalyser.fftSize = 256;
         source.connect(asrAnalyser);
         const dataArray = new Uint8Array(asrAnalyser.fftSize);
-        const tick = () => {
-          if (!asrAnalyser) return;
-          asrAnalyser.getByteTimeDomainData(dataArray);
-          // 从波形数据里分 10 段，取每段的最大振幅
-          const levels = [];
-          const segSize = Math.floor(dataArray.length / 10);
-          for (let i = 0; i < 10; i++) {
-            let max = 0;
-            for (let j = 0; j < segSize; j++) {
-              const v = Math.abs(dataArray[i * segSize + j] - 128) / 128;
-              if (v > max) max = v;
+        let lastLoudTime = Date.now();
+        getAsrConfig().then((cfg) => {
+          const silenceSec = Number(cfg.asr_silence_stop) || 0;
+          const silenceMs = silenceSec * 1000;
+          // 静默判断阈值：用唤醒阈值，没设则默认 0.05
+          const wakeThresh = Number(cfg.asr_wake_threshold) || 0;
+          const soundThresh = wakeThresh > 0 ? wakeThresh / 100 : 0.05;
+          const tick = () => {
+            if (!asrAnalyser) return;
+            asrAnalyser.getByteTimeDomainData(dataArray);
+            const levels = [];
+            const segSize = Math.floor(dataArray.length / 10);
+            let peak = 0;
+            for (let i = 0; i < 10; i++) {
+              let max = 0;
+              for (let j = 0; j < segSize; j++) {
+                const v = Math.abs(dataArray[i * segSize + j] - 128) / 128;
+                if (v > max) max = v;
+              }
+              levels.push(max);
+              if (max > peak) peak = max;
             }
-            levels.push(max);
-          }
-          pushBubble("onAsrVolume", { levels: levels });
-          asrVolumeRaf = setTimeout(tick, 100); // 每 100ms 更新一次
-        };
-        tick();
+            pushBubble("onAsrVolume", { levels: levels });
+            // 静默自动停止：peak 超过阈值算有声音
+            if (peak > soundThresh) lastLoudTime = Date.now();
+            if (silenceMs > 0 && Date.now() - lastLoudTime > silenceMs) {
+              console.log("[llm-float][asr] 静默 " + silenceSec + "s，自动停止识别");
+              stopAsrAndRecognize();
+              return;
+            }
+            asrVolumeRaf = setTimeout(tick, 100);
+          };
+          tick();
+        });
       } catch (e) { console.warn("[llm-float][asr] 音量分析启动失败:", e); }
     }).catch((err) => {
       asrActive = false;
@@ -223,9 +243,31 @@
           const delay = Number(cfg.asr_send_delay) || 2;
           setTimeout(() => sendResultToChat(text), delay * 1000);
         }).catch((e) => {
-          console.warn("[llm-float][asr] 识别失败：" + (e && e.message ? e.message : String(e)));
-          // 失败也继续走流程，把结果标记成"语音识别失败"，方便测试后续流程
-          sendResultToChat("【语音识别失败】");
+          console.warn("[llm-float][asr] HTTP 识别失败，尝试浏览器自带识别兜底：" + (e && e.message ? e.message : String(e)));
+          // 兜底：用浏览器 SpeechRecognition 重新识别
+          const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (SR) {
+            showAsrText("接口失败，切换浏览器识别…");
+            const rec = new SR();
+            rec.lang = "zh-CN";
+            rec.interimResults = false;
+            rec.maxAlternatives = 1;
+            rec.onresult = (ev) => {
+              const text = ev.results[0][0].transcript;
+              console.log("[llm-float][asr] 浏览器兜底识别成功: " + text);
+              showAsrFinal(text);
+              const delay = Number(cfg.asr_send_delay) || 2;
+              setTimeout(() => sendResultToChat(text), delay * 1000);
+            };
+            rec.onerror = () => {
+              console.warn("[llm-float][asr] 浏览器兜底识别也失败");
+              sendResultToChat("【语音识别失败】");
+            };
+            rec.start();
+          } else {
+            console.warn("[llm-float][asr] 浏览器不支持 SpeechRecognition，无兜底");
+            sendResultToChat("【语音识别失败】");
+          }
         });
       } else {
         console.warn("[llm-float][asr] HOST 未配置或未带 http(s):// 协议，未发起识别");
@@ -473,6 +515,82 @@
     };
     asrMockTimer = setInterval(step, 180);
   }
+
+  // ---------- 常驻唤醒：后台持续监听麦克风，音量超阈值自动开始识别 ----------
+  var wakeStream = null;
+  var wakeCtx = null;
+  var wakeAnalyser = null;
+  var wakeRaf = null;
+  var wakeCooldown = 0; // 冷却时间戳，避免重复触发
+
+  function wakeStop() {
+    if (wakeRaf) { clearTimeout(wakeRaf); wakeRaf = null; }
+    if (wakeCtx) { try { wakeCtx.close(); } catch (e) {} wakeCtx = null; }
+    wakeAnalyser = null;
+    if (wakeStream) {
+      try { wakeStream.getTracks().forEach((tr) => tr.stop()); } catch (e) {}
+      wakeStream = null;
+    }
+  }
+
+  function wakeStart() {
+    getAsrConfig().then((cfg) => {
+      const threshold = Number(cfg.asr_wake_threshold) || 0;
+      console.log("[llm-float][asr] 常驻唤醒检查: threshold=" + threshold + ", asrActive=" + asrActive + ", wakeStream=" + !!wakeStream);
+      if (threshold <= 0) { console.log("[llm-float][asr] 常驻唤醒: 阈值为0，不启动"); wakeStop(); return; }
+      if (asrActive) { console.log("[llm-float][asr] 常驻唤醒: 正在识别中，跳过"); return; }
+      if (wakeStream) { console.log("[llm-float][asr] 常驻唤醒: 已在监听"); return; }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { console.log("[llm-float][asr] 常驻唤醒: 浏览器不支持 getUserMedia"); return; }
+      console.log("[llm-float][asr] 常驻唤醒: 请求麦克风...");
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        wakeStream = stream;
+        wakeCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = wakeCtx.createMediaStreamSource(stream);
+        wakeAnalyser = wakeCtx.createAnalyser();
+        wakeAnalyser.fftSize = 256;
+        src.connect(wakeAnalyser);
+        const data = new Uint8Array(wakeAnalyser.fftSize);
+        const thresh = threshold / 100; // 0-100 → 0-1
+        console.log("[llm-float][asr] 常驻唤醒: 已启动监听, thresh=" + thresh.toFixed(3));
+        let tickCount = 0;
+        const loop = () => {
+          if (!wakeAnalyser) return;
+          wakeAnalyser.getByteTimeDomainData(data);
+          let peak = 0;
+          for (let i = 0; i < data.length; i++) {
+            const v = Math.abs(data[i] - 128) / 128;
+            if (v > peak) peak = v;
+          }
+          tickCount++;
+          if (tickCount % 25 === 0) { // 每 5 秒打一次日志（200ms × 25 = 5s）
+            console.log("[llm-float][asr] 常驻唤醒: peak=" + peak.toFixed(3) + " / thresh=" + thresh.toFixed(3));
+          }
+          const now = Date.now();
+          if (peak > thresh && now > wakeCooldown) {
+            console.log("[llm-float][asr] 常驻唤醒: 触发! peak=" + peak.toFixed(3) + " > thresh=" + thresh.toFixed(3));
+            wakeCooldown = now + 10000; // 10 秒冷却
+            wakeStop();
+            startAsrRecording();
+            return;
+          }
+          wakeRaf = setTimeout(loop, 200);
+        };
+        loop();
+      }).catch((e) => {
+        console.warn("[llm-float][asr] 常驻唤醒麦克风失败:", e && e.message ? e.message : e);
+      });
+    });
+  }
+
+  // 页面加载时启动常驻监听（如果配置了阈值）
+  setTimeout(() => { wakeStart(); }, 2000);
+  // 配置变更时重启监听
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.asr_wake_threshold) {
+      wakeStop();
+      wakeStart();
+    }
+  });
 
 /* ========== 功能单元注册：命令 + 面板消息 ========== */
 registerCommand("startAsr", () => { startAsrRecording(); return { ok: true }; });

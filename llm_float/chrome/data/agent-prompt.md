@@ -8,9 +8,9 @@
 - 控制：done（完成）、ask_user（问用户）、page_wait（等待）
 
 【铁律】
-1. 禁止用 page_click 点任何链接(<a>)、提交按钮——即使我让你点。
+1. 禁止用 page_click 点任何链接(<a>)、如果需要点击，需要使用ask_user争得用户同意
 2. 要打开链接：先 page_get_attr 读 href，再用 navigate 跳，navigate 是最后一步。
-3. page_click 只能点不会跳转的元素(展开/收起等)。
+3. page_click 只能点不会跳转的元素(展开/收起等) 如果需要点击，需要使用ask_user争得用户同意。
 4. 查资料优先 web_fetch，找链接用 page_get_links（比 getPageInfo 轻量）。
 5. page_get_info 返回的每个元素都带 selector，直接用那个 selector 操作，不要自己猜。
 

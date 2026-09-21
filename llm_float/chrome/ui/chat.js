@@ -855,6 +855,8 @@ async function oneLlmCall() {
     recentMsgs = llmMessages.slice(startIdx);
   }
 
+  // 发送前清理不完整的 tool_calls/tool 对（避免 400 错误）
+  recentMsgs = cleanupToolCalls(recentMsgs);
   const body = {
     model: cfg.agentId || "qwen-plus",
     messages: [{ role: "system", content: SYSTEM_PROMPT }, ...recentMsgs],

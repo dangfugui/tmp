@@ -72,6 +72,8 @@ const STORAGE_SCHEMA = [
       { key: 'asr_model', label: '识别模型', type: 'text', value: 'qwen3-asr', showWhen: ['http'] },
       { key: 'asr_language', label: '识别语言', type: 'text', value: 'zh', showWhen: ['http'] },
       { key: 'asr_send_delay', label: '识别结果停留(秒)', type: 'number', value: 2, min: 0, max: 10, step: 0.5, showWhen: ['stream', 'http'] },
+      { key: 'asr_silence_stop', label: '静默自动停止(秒)', type: 'number', value: 5, min: 0, max: 30, step: 1, showWhen: ['http'] },
+      { key: 'asr_wake_threshold', label: '常驻唤醒阈值(0=关,1-100)', type: 'number', value: 0, min: 0, max: 100, step: 5, showWhen: ['http', 'stream'] },
     ],
   },
   {
