@@ -680,12 +680,13 @@ let currentProfileCache = null; // { profiles, name }
 function refreshProfileCache() {
   return new Promise((resolve) => {
     try {
-      chrome.storage.local.get(["chat_profiles", "active_profile_name", "orb_opacity", "context_turns"], (d) => {
+      chrome.storage.local.get(["chat_profiles", "active_profile_name", "orb_opacity", "context_turns", "max_tool_rounds"], (d) => {
       if (d.orb_opacity !== undefined) document.body.style.opacity = String(Math.max(0.2, Math.min(1.0, Number(d.orb_opacity))));
         currentProfileCache = {
           profiles: d.chat_profiles || [],
           name: d.active_profile_name || "",
           contextTurns: parseInt(d.context_turns || "10", 10) || 10,
+        maxToolRounds: parseInt(d.max_tool_rounds || "20", 10) || 20,
           maxConversations: parseInt(d.max_conversations || "20", 10) || 20
         };
         resolve();
@@ -813,7 +814,7 @@ function abortChat() {
 
 let llmMessages = [];
 let llmRound = 0;
-const MAX_TOOL_ROUNDS = 20;
+let MAX_TOOL_ROUNDS = 20;
 /* 从 agent-prompt.md 加载 system prompt（LLM 模式专用，qwenpaw 模式不用） */
 let SYSTEM_PROMPT = "你是一个网页助手，可以帮用户操作当前页面。用中文回复。";
 fetch(chrome.runtime.getURL("data/agent-prompt.md"))
@@ -944,6 +945,7 @@ async function oneLlmCall() {
   // 上下文轮数限制：只传最新的 N 轮（默认 10 轮）
   // 注意：要从完整的轮次开始，不能截断 tool_calls/tool 对
   const ctxTurns = (currentProfileCache && currentProfileCache.contextTurns) || 10;
+  if (currentProfileCache && currentProfileCache.maxToolRounds) MAX_TOOL_ROUNDS = currentProfileCache.maxToolRounds;
   let recentMsgs = llmMessages;
   if (llmMessages.length > ctxTurns * 4) {
     // 从后往前找，找到第 ctxTurns 个 user 消息，从那里开始取
@@ -1089,7 +1091,12 @@ function maybePrependPrompt(text) {
     if (messagesEl.querySelector(".msg.user")) return text;
     const p = currentProfile();
     if (p && p.prompt && String(p.prompt).trim()) {
-      return "<details><summary>📋 已附加提示词</summary>\n\n" + String(p.prompt).trim() + "\n\n</details>\n\n" + text;
+      var promptText = String(p.prompt).trim();
+      try {
+        var hostUrl = new URLSearchParams(location.search).get("hostUrl") || "";
+        promptText = promptText.replace(/\$URL/g, hostUrl);
+      } catch (e) {}
+      return "<details><summary>📋 已附加提示词</summary>\n\n" + promptText + "\n\n</details>\n\n" + text;
     }
   } catch (e) { /* 忽略 */ }
   return text;

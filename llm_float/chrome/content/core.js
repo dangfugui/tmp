@@ -33,7 +33,7 @@ function createPanel(name) {
   if (!def) return null;
   const f = document.createElement("iframe");
   f.className = def.cls || "llm-float-panel";
-  f.src = chrome.runtime.getURL(def.url);
+  f.src = chrome.runtime.getURL(def.url) + "?hostUrl=" + encodeURIComponent(location.href);
   f.setAttribute("scrolling", "no");
   document.documentElement.appendChild(f);
   PANEL_FRAMES[name] = f;

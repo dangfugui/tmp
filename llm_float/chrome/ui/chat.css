@@ -216,24 +216,8 @@ body.maximized .msg.bot { max-width: 100%; }
   background:
     linear-gradient(rgba(2, 0, 20, 0.95), rgba(2, 0, 20, 0.95)) padding-box,
     linear-gradient(to bottom left, #39b6ff, #bd45fb, #39b6ff) border-box;
-  animation: borderFlow 2s linear infinite;
 }
-[data-theme="pageagent"] .card::before {
-  content: "";
-  position: absolute;
-  inset: -8px;
-  border-radius: 28px;
-  background: linear-gradient(to bottom left, #39b6ff, #bd45fb, #39b6ff);
-  filter: blur(12px);
-  opacity: 0.4;
-  z-index: -1;
-  animation: borderFlow 2s linear infinite;
-}
-@keyframes borderFlow {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 200% 200%; }
-}
-/* ========== PageAgent 主题结束 ========== */
+/* PageAgent 主题：静态渐变边框（已去掉动画和模糊，降低 CPU） */
 
 /* ---------- typing ---------- */
 .bubble.typing {

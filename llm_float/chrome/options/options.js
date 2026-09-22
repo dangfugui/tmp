@@ -14,6 +14,7 @@ function getSchema() {
       { key: 'orb_action_wheel', label: t('field.orb_wheel'), type: 'select', value: 'none', options: ORB_ACTIONS.map(a => [a.value, a.label]) },
       { key: 'agent_workdir', label: t('field.workdir'), type: 'agent_workdir', value: '' },
       { key: 'context_turns', label: t('field.context_turns'), type: 'number', value: 10, min: 1, max: 50, step: 1 },
+      { key: 'max_tool_rounds', label: t('field.max_tool_rounds'), type: 'number', value: 20, min: 1, max: 100, step: 1 },
       { key: 'max_conversations', label: t('field.max_convs'), type: 'number', value: 20, min: 1, max: 999, step: 1 },
       { key: 'py_bridge_enabled', label: t('field.py_bridge'), type: 'bool', value: false },
       { key: 'language', label: t('field.language'), type: 'select', value: 'zh', options: [['zh', '简体中文'], ['en', 'English']] },
