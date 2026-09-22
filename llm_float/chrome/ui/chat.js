@@ -3,6 +3,17 @@ const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("send");
 const titlebarEl = document.getElementById("titlebar");
 
+/* 代码块复制按钮（事件委托） */
+messagesEl.addEventListener("click", (e) => {
+  const btn = e.target.closest(".md-copy-btn");
+  if (!btn) return;
+  const pre = btn.parentElement.querySelector("pre code");
+  if (!pre) return;
+  copyText(pre.textContent);
+  btn.textContent = "已复制";
+  setTimeout(() => { btn.textContent = "复制"; }, 1200);
+});
+
 const WELCOME = "你好，我是 AI 助手 👋\n输入消息即可开始对话。";
 
 
@@ -54,7 +65,7 @@ function renderMarkdown(src) {
       const mmCode = code.replace(/\n$/, "").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
       codeBlocks.push('<div class="mermaid-wrap"><div class="mermaid">' + mmCode + "</div></div>");
     } else {
-      codeBlocks.push('<pre class="md-pre"><code>' + code.replace(/\n$/, "") + "</code></pre>");
+      codeBlocks.push('<div class="md-code-wrap"><button type="button" class="md-copy-btn" title="复制代码">复制</button><pre class="md-pre"><code>' + code.replace(/\n$/, "") + "</code></pre></div>");
     }
     return "\u0000CB" + (codeBlocks.length - 1) + "\u0000";
   });
@@ -207,20 +218,18 @@ function timeLabel() {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/* 平滑滚动到底部：流式增量 (force=false) 用 instant 快速跟随，
+ * 最终完成/切换会话 (force=true) 用 smooth 动画。
+ * 用 scrollIntoView 而非 scrollTop = scrollHeight，原因：
+ * - Linux Chrome 下 scrollTop setter 在某些条件下静默失效（赋值后读回仍为 0）
+ * - scrollIntoView 不依赖 scrollTop，走浏览器滚动路径，跨平台一致。 */
 function scrollToEnd(force) {
-  const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
-  if (force || nearBottom) {
-    // 临时关掉 smooth 滚动，直接跳到最底（流式回复时 smooth 会跟不上）
-    const prev = messagesEl.style.scrollBehavior;
-    messagesEl.style.scrollBehavior = "auto";
-    requestAnimationFrame(() => {
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      requestAnimationFrame(() => {
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-        messagesEl.style.scrollBehavior = prev;
-      });
-    });
-  }
+  requestAnimationFrame(() => {
+    const lastChild = messagesEl.lastElementChild;
+    if (lastChild) {
+      lastChild.scrollIntoView({ block: "end", behavior: force ? "smooth" : "instant" });
+    }
+  });
 }
 
 function el(tag, cls, text) {
@@ -466,7 +475,7 @@ function addMessage(role, text, detail) {
   } else {
     bubble.innerHTML = renderMarkdown(text); // 用户消息也渲染 Markdown
   }
-  msg.append(bubble, makeMeta(() => bubble.innerText));
+  msg.append(bubble, makeMeta(() => text));
   messagesEl.appendChild(msg);
   scrollToEnd(true);
   if (!restoring && text) saveMessage(role, text);
@@ -645,7 +654,7 @@ window.assistant.onChatMessage = function (payload) {
     pendingBotText = text;
     if (!botEl && text) {
       botEl = el("div", "msg bot");
-      botEl.append(el("div", "bubble"), makeMeta(() => botEl.querySelector(".bubble").innerText));
+      botEl.append(el("div", "bubble"), makeMeta(() => pendingBotText));
       messagesEl.appendChild(botEl);
     }
     finishReply();
@@ -658,7 +667,7 @@ window.assistant.onChatMessage = function (payload) {
   pendingBotText = text;
   if (!botEl) {
     botEl = el("div", "msg bot");
-    botEl.append(el("div", "bubble"), makeMeta(() => botEl.querySelector(".bubble").innerText));
+    botEl.append(el("div", "bubble"), makeMeta(() => pendingBotText));
     messagesEl.appendChild(botEl);
   }
   scheduleBotRender();
@@ -716,7 +725,7 @@ async function qwenChat(text) {
   if (cfg.token) headers["Authorization"] = "Bearer " + cfg.token;
   const payload = {
     input: [{ role: "user", content: [{ type: "text", text }] }],
-    session_id: cfg.sessionId || ("chrome-" + location.hostname),
+    session_id: currentConvId || ("chrome-" + location.hostname),
     user_id: "chrome-user",
     channel: "console",
   };

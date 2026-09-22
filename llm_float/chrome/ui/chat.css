@@ -342,8 +342,29 @@ body.maximized .msg.bot { max-width: 100%; }
   border-radius: 6px;
 }
 
-.md-pre {
+.md-code-wrap {
+  position: relative;
   margin: 8px 0;
+}
+.md-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  padding: 3px 10px;
+  font-size: 11px;
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.md-code-wrap:hover .md-copy-btn { opacity: 1; }
+.md-copy-btn:hover { color: var(--text-primary); border-color: var(--accent); }
+.md-pre {
+  margin: 0;
   padding: 10px 12px;
   background: var(--input-bg);
   border: 1px solid var(--divider);

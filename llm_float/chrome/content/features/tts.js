@@ -14,10 +14,14 @@
   var ttsLastText = "";
 
   // TTS 定位元素：先按 id 找（兼容旧配置），找不到再按 CSS 选择器找（支持 class / 属性 / 任意选择器）
-  function findTtsEl(target) {
+  function findTtsText(target) {
     const byId = document.getElementById(target);
-    if (byId) return byId;
-    try { return document.querySelector(target); } catch (e) { return null; }
+    if (byId) return (byId.textContent || "").trim();
+    try {
+      const els = document.querySelectorAll(target);
+      if (!els.length) return "";
+      return Array.from(els).map((e) => (e.textContent || "").trim()).filter(Boolean).join("。");
+    } catch (e) { return ""; }
   }
 
   function startTtsTarget() {
@@ -36,9 +40,8 @@
         console.log("[llm-float][ttsTarget] 启动轮询: '" + target + "' (配置: " + name + ")");
         // 每 1s 轮询定位元素文本：与上次一致不触发；追加场景播增量、整体重写场景播全文
         ttsTimer = setInterval(() => {
-          const el = findTtsEl(target);
-          if (!el) return;
-          const text = (el.textContent || "").trim();
+          const text = findTtsText(target);
+          if (!text) return;
           if (text === ttsLastText) return; // 与上次一致，不触发
           let toSpeak = text;
           if (text.startsWith(ttsLastText) && text.length > ttsLastText.length) {
@@ -274,6 +277,7 @@
   function speakText(text, background) {
     console.log("[llm-float][tts] speakText 进入: '" + text + "'" + (background ? " (后台)" : ""));
     try {
+      stopContentTts();
       callCommand("stopAsr", {});
       const sentences = String(text).split(/[。！？!?；;]/).map(s => s.trim()).filter(Boolean);
       if (!sentences.length) return;
@@ -294,7 +298,7 @@
             text = text.slice(0, maxLen);
             console.log("[llm-float][tts] 文本超过", maxLen, "字，截断为前", maxLen, "字");
           }
-          text = text + "如下内容：";
+          text = text + "内容如下：";
         }
         if (!background) {
           openPanel("bubble");

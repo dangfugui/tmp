@@ -14,10 +14,12 @@ const STORAGE_SCHEMA = [
       { key: 'agent_workdir', label: 'Agent 工作目录', type: 'agent_workdir', value: '' },
       { key: 'context_turns', label: '上下文轮数', type: 'number', value: 10, min: 1, max: 50, step: 1 },
       { key: 'max_conversations', label: '最多保留会话数', type: 'number', value: 20, min: 1, max: 999, step: 1 },
+      { key: 'py_bridge_enabled', label: 'Python SDK 桥接(自动连接)', type: 'bool', value: false },
     ],
   },
   {
     section: '聊天（网址匹配）',
+    collapsed: true,
     items: [
       { key: 'chat_profiles', label: '', type: 'chat_profiles', value: [
         { chatName: '默认', urlRegex: '.*', baseUrl: 'http://localhost:8088', agentId: 'default', ttsTarget: '', inputSelector: '', prompt: '', token: '', mode: 'qwenpaw' },
@@ -26,6 +28,7 @@ const STORAGE_SCHEMA = [
   },
   {
     section: '常用地址',
+    collapsed: true,
     items: [
       { key: 'quick_links', label: '', type: 'quick_links', value: [
         { name: '百度', url: 'https://www.baidu.com' },
@@ -34,6 +37,7 @@ const STORAGE_SCHEMA = [
   },
   {
     section: '字幕（TTS）',
+    collapsed: true,
     segmentKey: 'tts_mode',
     segmentOptions: [['off', '关'], ['stream', '流式'], ['http', '非流式']],
     segmentDefault: 'stream',
@@ -63,6 +67,7 @@ const STORAGE_SCHEMA = [
   },
   {
     section: '识别（ASR）',
+    collapsed: true,
     segmentKey: 'asr_mode',
     segmentOptions: [['off', '关'], ['stream', '流式'], ['http', '非流式']],
     segmentDefault: 'http',
@@ -427,14 +432,16 @@ function renderSettings(data) {
       title.appendChild(seg);
     }
 
+    // 所有区域都可折叠；collapsed:true 默认折叠，否则默认展开
+    title.classList.add('collapsible');
     if (section.collapsed) {
-      title.classList.add('collapsible', 'collapsed');
+      title.classList.add('collapsed');
       list.classList.add('hidden');
-      title.addEventListener('click', () => {
-        const collapsed = list.classList.toggle('hidden');
-        title.classList.toggle('collapsed', collapsed);
-      });
     }
+    title.addEventListener('click', () => {
+      const collapsed = list.classList.toggle('hidden');
+      title.classList.toggle('collapsed', collapsed);
+    });
   });
 }
 
@@ -543,14 +550,7 @@ async function resetSettings() {
 async function exportSettings() {
   try {
     const all = await chrome.storage.local.get(null);
-    // 过滤掉聊天历史（chat_history_*）和临时标记，只导出配置
-    const cfg = {};
-    for (const [k, v] of Object.entries(all)) {
-      if (k.startsWith("chat_history_")) continue;
-      if (k === "navigate_keep_profile" || k === "navigate_keep_chat") continue;
-      cfg[k] = v;
-    }
-    const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(all, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -582,8 +582,50 @@ function importSettings() {
 /* ---------- 事件绑定 ---------- */
 document.getElementById('set-save')?.addEventListener('click', saveSettings);
 document.getElementById('set-reset')?.addEventListener('click', resetSettings);
+async function exportChatHistory() {
+  try {
+    const all = await chrome.storage.local.get(null);
+    const chat = {};
+    for (const [k, v] of Object.entries(all)) {
+      if (k.startsWith("chat_conv_")) chat[k] = v;
+    }
+    const blob = new Blob([JSON.stringify(chat, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "llm-float-chat-history.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("已导出聊天记录");
+  } catch (e) { showToast("导出失败: " + (e.message || e)); }
+}
+
+function importChatHistory() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const chat = {};
+      for (const [k, v] of Object.entries(data)) {
+        if (k.startsWith("chat_conv_")) chat[k] = v;
+      }
+      await chrome.storage.local.set(chat);
+      showToast("已导入聊天记录，刷新生效");
+      setTimeout(() => location.reload(), 800);
+    } catch (e) { showToast("导入失败: " + (e.message || e)); }
+  };
+  input.click();
+}
+
 document.getElementById('set-export')?.addEventListener('click', exportSettings);
 document.getElementById('set-import')?.addEventListener('click', importSettings);
+document.getElementById('set-export-chat')?.addEventListener('click', exportChatHistory);
+document.getElementById('set-import-chat')?.addEventListener('click', importChatHistory);
 document.getElementById('set-tts-demo')?.addEventListener('click', () => {
   try { chrome.runtime.sendMessage({ type: 'llm_demo', demo: 'tts' }); } catch (e) { /* 忽略 */ }
 });

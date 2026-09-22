@@ -529,9 +529,29 @@ chrome.alarms.create("py-bridge-keepalive", { periodInMinutes: 0.4 });
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name !== "py-bridge-keepalive") return;
   // OPEN(1)/CONNECTING(0) 视为正在处理中不打扰；CLOSING(2)/CLOSED(3)/null 才重连
-  if (!pyWs || (pyWs.readyState !== 0 && pyWs.readyState !== 1)) {
-    if (!bridgeReconnectTimer) bridgeConnect(); // 退避等待中不抢跑
-  } else if (pyWs.readyState === 1) bridgeSend({ event: "ping" });
+  chrome.storage.local.get({ py_bridge_enabled: false }, (d) => {
+    if (!d.py_bridge_enabled) return;
+    if (!pyWs || (pyWs.readyState !== 0 && pyWs.readyState !== 1)) {
+      if (!bridgeReconnectTimer) bridgeConnect();
+    } else if (pyWs.readyState === 1) bridgeSend({ event: "ping" });
+  });
 });
 
-bridgeConnect();
+/* 根据设置决定是否自动连接 Python SDK */
+function maybeBridgeConnect() {
+  chrome.storage.local.get({ py_bridge_enabled: false }, (d) => {
+    if (d.py_bridge_enabled) bridgeConnect();
+  });
+}
+/* 设置变化时动态开关 */
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes.py_bridge_enabled) return;
+  if (changes.py_bridge_enabled.newValue) {
+    maybeBridgeConnect();
+  } else {
+    if (pyWs) { try { pyWs.onclose = null; pyWs.close(); } catch (e) {} pyWs = null; }
+    if (bridgeReconnectTimer) { clearTimeout(bridgeReconnectTimer); bridgeReconnectTimer = null; }
+    console.log("[bridge] py_bridge_enabled=false，已断开自动重连");
+  }
+});
+maybeBridgeConnect();

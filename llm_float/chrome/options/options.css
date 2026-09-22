@@ -130,10 +130,10 @@ body {
 .section h3.collapsible::after {
   content: "▾";
   position: absolute;
-  right: 14px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 10px;
+  font-size: 20px;
   color: var(--text-secondary);
   transition: transform .15s;
 }
@@ -369,6 +369,7 @@ body {
   padding: 2px;
   gap: 2px;
   flex: 0 0 auto;
+  margin-right: 20px;
 }
 .seg-btn {
   border: none;
