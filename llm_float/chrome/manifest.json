@@ -1,4 +1,4 @@
-﻿{
+{
   "manifest_version": 3,
   "name": "LLM Float 悬浮助手",
   "description": "悬浮球 AI 聊天助手：支持 QwenPaw / OpenAI 兼容 LLM 两种模式，含轻量 agent 工具（页面操作 + 授权目录读写），核心 UI 不依赖 Python",
@@ -20,7 +20,10 @@
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": [
+      "background.js"
+    ]
   },
   "action": {
     "default_title": "LLM Float",
@@ -37,6 +40,7 @@
         "<all_urls>"
       ],
       "js": [
+        "content/i18n.js",
         "content/utils.js",
         "content/core.js",
         "content/features/agent.js",
@@ -64,5 +68,11 @@
         "<all_urls>"
       ]
     }
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "llm-float@local.dev",
+      "strict_min_version": "128.0"
+    }
+  }
 }

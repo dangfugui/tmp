@@ -10,11 +10,11 @@ messagesEl.addEventListener("click", (e) => {
   const pre = btn.parentElement.querySelector("pre code");
   if (!pre) return;
   copyText(pre.textContent);
-  btn.textContent = "已复制";
-  setTimeout(() => { btn.textContent = "复制"; }, 1200);
+  btn.textContent = t("chat.copied");
+  setTimeout(() => { btn.textContent = t("chat.copy"); }, 1200);
 });
 
-const WELCOME = "你好，我是 AI 助手 👋\n输入消息即可开始对话。";
+let WELCOME = "你好，我是 AI 助手 👋\n输入消息即可开始对话。";
 
 
 let busy = false;
@@ -271,8 +271,8 @@ function makeMeta(getText) {
   btn.type = "button";
   btn.addEventListener("click", () => {
     copyText(getText());
-    btn.textContent = "已复制";
-    setTimeout(() => { btn.textContent = "复制"; }, 1200);
+    btn.textContent = t("chat.copied");
+    setTimeout(() => { btn.textContent = t("chat.copy"); }, 1200);
   });
   meta.appendChild(btn);
   return meta;
@@ -1317,4 +1317,17 @@ chrome.storage.local.get(["pending_nav_chat"], (d) => {
       send();
     }, 500);
   }
+});
+
+initI18n(() => {
+  WELCOME = t("chat.welcome");
+  var el;
+  if (el = document.getElementById("lbl-online")) el.textContent = t("chat.online");
+  if (el = document.getElementById("btn-del-conv")) el.title = t("chat.del_conv_title");
+  if (el = document.getElementById("btn-tts-toggle")) el.title = t("chat.tts_toggle_title");
+  if (el = document.getElementById("btn-clear")) el.title = t("chat.clear_title");
+  if (el = document.getElementById("btn-max")) el.title = t("chat.max_title");
+  if (el = document.getElementById("btn-close")) el.title = t("chat.close_title");
+  if (el = document.getElementById("input")) el.placeholder = t("chat.placeholder");
+  if (el = document.getElementById("send")) el.title = t("chat.send_title");
 });

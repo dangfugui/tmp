@@ -1,24 +1,26 @@
 /* LLM Float 设置页（Chrome 扩展完整版）
  * 设置项 schema 与 PySide6 版一致；存储走 chrome.storage.local，保存后广播各标签页刷新。
  */
-const STORAGE_SCHEMA = [
+function getSchema() {
+  return [
   {
-    section: '基础',
+    section: t('sec.basic'),
     items: [
-      { key: 'orb_opacity', label: '悬浮球透明度', type: 'number', value: 1.0, min: 0.2, max: 1.0, step: 0.05 },
-      { key: 'theme', label: '主题', type: 'select', value: 'glass', options: [['glass', '液态玻璃'], ['flat', '极简扁平'], ['neon', '霓虹赛博'], ['macaron', '马卡龙奶油'], ['metal', '金属质感'], ['candy', '活力糖果'], ['morandi', '莫兰迪雅致'], ['synthwave', '复古合成波'], ['green', '自然绿意'], ['mono', '黑白极简'], ['brand', '品牌蓝'], ['pageagent', 'PageAgent']] },
-      { key: 'orb_size', label: '悬浮球大小', type: 'number', value: 68, min: 40, max: 96, step: 1 },
-      { key: 'orb_action_left', label: '左键动作（单击/拖动方向）', type: 'select', value: 'open_chat', options: ORB_ACTIONS.map(a => [a.value, a.label]) },
-      { key: 'orb_action_right', label: '右键动作', type: 'select', value: 'open_asr', options: ORB_ACTIONS.map(a => [a.value, a.label]) },
-      { key: 'orb_action_wheel', label: '滚轮动作', type: 'select', value: 'none', options: ORB_ACTIONS.map(a => [a.value, a.label]) },
-      { key: 'agent_workdir', label: 'Agent 工作目录', type: 'agent_workdir', value: '' },
-      { key: 'context_turns', label: '上下文轮数', type: 'number', value: 10, min: 1, max: 50, step: 1 },
-      { key: 'max_conversations', label: '最多保留会话数', type: 'number', value: 20, min: 1, max: 999, step: 1 },
-      { key: 'py_bridge_enabled', label: 'Python SDK 桥接(自动连接)', type: 'bool', value: false },
+      { key: 'orb_opacity', label: t('field.orb_opacity'), type: 'number', value: 1.0, min: 0.2, max: 1.0, step: 0.05 },
+      { key: 'theme', label: t('field.theme'), type: 'select', value: 'glass', options: [['glass', t('theme.glass')], ['flat', t('theme.flat')], ['neon', t('theme.neon')], ['macaron', t('theme.macaron')], ['metal', t('theme.metal')], ['candy', t('theme.candy')], ['morandi', t('theme.morandi')], ['synthwave', t('theme.synthwave')], ['green', t('theme.green')], ['mono', t('theme.mono')], ['brand', t('theme.brand')], ['pageagent', t('theme.pageagent')]] },
+      { key: 'orb_size', label: t('field.orb_size'), type: 'number', value: 68, min: 40, max: 96, step: 1 },
+      { key: 'orb_action_left', label: t('field.orb_left'), type: 'select', value: 'open_chat', options: ORB_ACTIONS.map(a => [a.value, a.label]) },
+      { key: 'orb_action_right', label: t('field.orb_right'), type: 'select', value: 'open_asr', options: ORB_ACTIONS.map(a => [a.value, a.label]) },
+      { key: 'orb_action_wheel', label: t('field.orb_wheel'), type: 'select', value: 'none', options: ORB_ACTIONS.map(a => [a.value, a.label]) },
+      { key: 'agent_workdir', label: t('field.workdir'), type: 'agent_workdir', value: '' },
+      { key: 'context_turns', label: t('field.context_turns'), type: 'number', value: 10, min: 1, max: 50, step: 1 },
+      { key: 'max_conversations', label: t('field.max_convs'), type: 'number', value: 20, min: 1, max: 999, step: 1 },
+      { key: 'py_bridge_enabled', label: t('field.py_bridge'), type: 'bool', value: false },
+      { key: 'language', label: t('field.language'), type: 'select', value: 'zh', options: [['zh', '简体中文'], ['en', 'English']] },
     ],
   },
   {
-    section: '聊天（网址匹配）',
+    section: t('sec.chat'),
     collapsed: true,
     items: [
       { key: 'chat_profiles', label: '', type: 'chat_profiles', value: [
@@ -27,7 +29,7 @@ const STORAGE_SCHEMA = [
     ],
   },
   {
-    section: '常用地址',
+    section: t('sec.links'),
     collapsed: true,
     items: [
       { key: 'quick_links', label: '', type: 'quick_links', value: [
@@ -36,79 +38,90 @@ const STORAGE_SCHEMA = [
     ],
   },
   {
-    section: '字幕（TTS）',
+    section: t('sec.tts'),
     collapsed: true,
     segmentKey: 'tts_mode',
-    segmentOptions: [['off', '关'], ['stream', '流式'], ['http', '非流式']],
+    segmentOptions: [['off', t('seg.off')], ['stream', t('seg.stream')], ['http', t('seg.http')]],
     segmentDefault: 'stream',
     items: [
       // 流式 TTS 配置
-      { key: 'tts_ws_host', label: '流式 HOST', type: 'text', value: '', showWhen: ['stream'] },
-      { key: 'tts_ws_api_key', label: '流式 API Key', type: 'password', value: '', showWhen: ['stream'] },
-      { key: 'tts_ws_model', label: '流式模型', type: 'text', value: 'qwen3-tts', showWhen: ['stream'] },
-      { key: 'tts_ws_voice', label: '流式音色', type: 'text', value: 'vivian', showWhen: ['stream'] },
-      { key: 'tts_ws_language', label: '流式语言', type: 'text', value: 'zh', showWhen: ['stream'] },
-      { key: 'tts_ws_speed', label: '流式语速', type: 'number', value: 1.0, min: 0.5, max: 2.0, step: 0.1, showWhen: ['stream'] },
-      { key: 'tts_ws_instructions', label: '流式指令', type: 'text', value: '', showWhen: ['stream'] },
+      { key: 'tts_ws_host', label: t('tts.ws_host'), type: 'text', value: '', showWhen: ['stream'] },
+      { key: 'tts_ws_api_key', label: t('tts.ws_key'), type: 'password', value: '', showWhen: ['stream'] },
+      { key: 'tts_ws_model', label: t('tts.ws_model'), type: 'text', value: 'qwen3-tts', showWhen: ['stream'] },
+      { key: 'tts_ws_voice', label: t('tts.ws_voice'), type: 'text', value: 'vivian', showWhen: ['stream'] },
+      { key: 'tts_ws_language', label: t('tts.ws_lang'), type: 'text', value: 'zh', showWhen: ['stream'] },
+      { key: 'tts_ws_speed', label: t('tts.ws_speed'), type: 'number', value: 1.0, min: 0.5, max: 2.0, step: 0.1, showWhen: ['stream'] },
+      { key: 'tts_ws_instructions', label: t('tts.ws_instr'), type: 'text', value: '', showWhen: ['stream'] },
       // 非流式 TTS 配置
-      { key: 'tts_http_host', label: '非流式 HOST', type: 'text', value: '', showWhen: ['http'] },
-      { key: 'tts_http_api_key', label: '非流式 API Key', type: 'password', value: '', showWhen: ['http'] },
-      { key: 'tts_http_model', label: '非流式模型', type: 'text', value: 'qwen3-tts', showWhen: ['http'] },
-      { key: 'tts_http_voice', label: '非流式音色', type: 'text', value: 'vivian', showWhen: ['http'] },
-      { key: 'tts_http_response_format', label: '非流式音频格式', type: 'text', value: 'pcm', showWhen: ['http'] },
-      { key: 'tts_http_sample_rate', label: '非流式采样率', type: 'number', value: 24000, min: 8000, max: 48000, step: 1000, showWhen: ['http'] },
-      { key: 'tts_http_language', label: '非流式语言', type: 'text', value: 'zh', showWhen: ['http'] },
-      { key: 'tts_http_speed', label: '非流式语速', type: 'number', value: 1.0, min: 0.5, max: 2.0, step: 0.1, showWhen: ['http'] },
-      { key: 'tts_http_instructions', label: '非流式指令', type: 'text', value: '', showWhen: ['http'] },
+      { key: 'tts_http_host', label: t('tts.http_host'), type: 'text', value: '', showWhen: ['http'] },
+      { key: 'tts_http_api_key', label: t('tts.http_key'), type: 'password', value: '', showWhen: ['http'] },
+      { key: 'tts_http_model', label: t('tts.http_model'), type: 'text', value: 'qwen3-tts', showWhen: ['http'] },
+      { key: 'tts_http_voice', label: t('tts.http_voice'), type: 'text', value: 'vivian', showWhen: ['http'] },
+      { key: 'tts_http_response_format', label: t('tts.http_fmt'), type: 'text', value: 'pcm', showWhen: ['http'] },
+      { key: 'tts_http_sample_rate', label: t('tts.http_rate'), type: 'number', value: 24000, min: 8000, max: 48000, step: 1000, showWhen: ['http'] },
+      { key: 'tts_http_language', label: t('tts.http_lang'), type: 'text', value: 'zh', showWhen: ['http'] },
+      { key: 'tts_http_speed', label: t('tts.http_speed'), type: 'number', value: 1.0, min: 0.5, max: 2.0, step: 0.1, showWhen: ['http'] },
+      { key: 'tts_http_instructions', label: t('tts.http_instr'), type: 'text', value: '', showWhen: ['http'] },
       // 通用配置
-      { key: 'tts_hide_time', label: '播报后关闭窗口(秒)', type: 'number', value: 1, min: 0, max: 10, step: 0.5, showWhen: ['stream', 'http'] },
-      { key: 'tts_max_length', label: 'TTS 最大字符数', type: 'number', value: 50, min: 10, max: 500, step: 10, showWhen: ['stream', 'http'] },
+      { key: 'tts_hide_time', label: t('tts.hide_time'), type: 'number', value: 1, min: 0, max: 10, step: 0.5, showWhen: ['stream', 'http'] },
+      { key: 'tts_max_length', label: t('tts.max_len'), type: 'number', value: 50, min: 10, max: 500, step: 10, showWhen: ['stream', 'http'] },
     ],
   },
   {
-    section: '识别（ASR）',
+    section: t('sec.asr'),
     collapsed: true,
     segmentKey: 'asr_mode',
-    segmentOptions: [['off', '关'], ['stream', '流式'], ['http', '非流式']],
+    segmentOptions: [['off', t('seg.off')], ['stream', t('seg.stream')], ['http', t('seg.http')]],
     segmentDefault: 'http',
     items: [
       // ASR 接口配置（非流式 POST /v1/audio/transcriptions；流式用浏览器自带识别，不用接口）
-      { key: 'asr_host', label: 'ASR 服务 HOST', type: 'text', value: '', showWhen: ['http'] },
-      { key: 'asr_api_key', label: 'ASR API Key', type: 'password', value: '', showWhen: ['http'] },
-      { key: 'asr_model', label: '识别模型', type: 'text', value: 'qwen3-asr', showWhen: ['http'] },
-      { key: 'asr_language', label: '识别语言', type: 'text', value: 'zh', showWhen: ['http'] },
-      { key: 'asr_send_delay', label: '识别结果停留(秒)', type: 'number', value: 2, min: 0, max: 10, step: 0.5, showWhen: ['stream', 'http'] },
-      { key: 'asr_silence_stop', label: '静默自动停止(秒)', type: 'number', value: 5, min: 0, max: 30, step: 1, showWhen: ['http'] },
-      { key: 'asr_wake_threshold', label: '常驻唤醒阈值(0=关,1-100)', type: 'number', value: 0, min: 0, max: 100, step: 5, showWhen: ['http', 'stream'] },
+      { key: 'asr_host', label: t('asr.host'), type: 'text', value: '', showWhen: ['http'] },
+      { key: 'asr_api_key', label: t('asr.key'), type: 'password', value: '', showWhen: ['http'] },
+      { key: 'asr_model', label: t('asr.model'), type: 'text', value: 'qwen3-asr', showWhen: ['http'] },
+      { key: 'asr_language', label: t('asr.lang'), type: 'text', value: 'zh', showWhen: ['http'] },
+      { key: 'asr_send_delay', label: t('asr.delay'), type: 'number', value: 2, min: 0, max: 10, step: 0.5, showWhen: ['stream', 'http'] },
+      { key: 'asr_silence_stop', label: t('asr.silence'), type: 'number', value: 5, min: 0, max: 30, step: 1, showWhen: ['http'] },
+      { key: 'asr_wake_threshold', label: t('asr.wake'), type: 'number', value: 0, min: 0, max: 100, step: 5, showWhen: ['http', 'stream'] },
     ],
   },
   {
-    section: '未启用',
+    section: t('sec.advanced'),
     collapsed: true,
     items: [
-      { key: 'language', label: '界面语言', type: 'select', value: 'zh', options: [['zh', '简体中文'], ['en', 'English']] },
-      { key: 'autostart', label: '开机自启', type: 'bool', value: false },
-      { key: 'default_mode', label: '默认打开模式', type: 'select', value: 'chat', options: [['chat', '聊天'], ['subtitle', '字幕'], ['asr', '识别']] },
-      { key: 'base_url', label: '接口地址 Base URL', type: 'text', value: 'https://api.example.com/v1' },
+      { key: 'autostart', label: t('adv.autostart'), type: 'bool', value: false },
+      { key: 'default_mode', label: t('adv.default_mode'), type: 'select', value: 'chat', options: [['chat', t('mode.chat')], ['subtitle', t('mode.subtitle')], ['asr', t('mode.asr')]] },
+      { key: 'base_url', label: t('adv.base_url'), type: 'text', value: 'https://api.example.com/v1' },
       { key: 'api_key', label: 'API Key', type: 'password', value: '' },
       { key: 'model', label: '模型', type: 'select', value: 'gpt-4o', options: [['gpt-4o', 'gpt-4o'], ['gpt-4o-mini', 'gpt-4o-mini'], ['qwen-max', 'qwen-max'], ['custom', '自定义']] },
       { key: 'system_prompt', label: 'System Prompt', type: 'textarea', value: '你是一个有用的桌面助手，回答尽量简洁。' },
       { key: 'temperature', label: 'temperature', type: 'number', value: 0.7, min: 0, max: 2, step: 0.1 },
-      { key: 'max_tokens', label: '单次最大 tokens', type: 'number', value: 2048, min: 256, max: 32768, step: 256 },
-      { key: 'stream', label: '流式输出', type: 'bool', value: true },
+      { key: 'max_tokens', label: t('adv.max_tokens'), type: 'number', value: 2048, min: 256, max: 32768, step: 256 },
+      { key: 'stream', label: t('adv.stream_out'), type: 'bool', value: true },
 
-      { key: 'hotkey_chat', label: '唤起聊天', type: 'text', value: 'Ctrl+Alt+Space' },
-      { key: 'hotkey_asr', label: '开始 / 结束识别', type: 'text', value: 'Ctrl+Alt+R' },
-      { key: 'log_level', label: '日志级别', type: 'select', value: 'INFO', options: [['DEBUG', 'DEBUG'], ['INFO', 'INFO'], ['WARN', 'WARN'], ['ERROR', 'ERROR']] },
-      { key: 'data_dir', label: '数据目录', type: 'text', value: './data' },
-      { key: 'proxy', label: '代理地址', type: 'text', value: '' },
-      { key: 'features', label: '启用模块', type: 'list', value: ['chat', 'subtitle'], options: [['chat', '聊天'], ['subtitle', '字幕'], ['asr', '识别'], ['settings', '设置']] },
+      { key: 'hotkey_chat', label: t('adv.hotkey_chat'), type: 'text', value: 'Ctrl+Alt+Space' },
+      { key: 'hotkey_asr', label: t('adv.hotkey_asr'), type: 'text', value: 'Ctrl+Alt+R' },
+      { key: 'log_level', label: t('adv.log_level'), type: 'select', value: 'INFO', options: [['DEBUG', 'DEBUG'], ['INFO', 'INFO'], ['WARN', 'WARN'], ['ERROR', 'ERROR']] },
+      { key: 'data_dir', label: t('adv.data_dir'), type: 'text', value: './data' },
+      { key: 'proxy', label: t('adv.proxy'), type: 'text', value: '' },
+      { key: 'features', label: t('adv.features'), type: 'list', value: ['chat', 'subtitle'], options: [['chat', t('mode.chat')], ['subtitle', t('mode.subtitle')], ['asr', t('mode.asr')], ['settings', t('mode.settings')]] },
     ],
   },
 ];
+}
 
 let currentSettings = [];
 
+function applyStaticI18n() {
+  document.getElementById("opt-title").textContent = t("options.title");
+  document.getElementById("opt-subtitle").textContent = t("options.subtitle");
+  document.getElementById("set-reset").textContent = t("options.reset");
+  document.getElementById("set-import").textContent = t("options.import");
+  document.getElementById("set-export").textContent = t("options.export");
+  document.getElementById("set-import-chat").textContent = t("options.import_chat");
+  document.getElementById("set-export-chat").textContent = t("options.export_chat");
+  document.getElementById("set-save").textContent = t("options.save");
+}
+initI18n(() => { applyStaticI18n(); loadSettings(); });
 function showToast(msg, timeout = 1600) {
   const toast = document.getElementById('toast');
   if (!toast) return;
@@ -263,7 +276,7 @@ function prepareField(item) {
     input.checked = !!item.value;
     input.dataset.key = item.key;
     check.appendChild(input);
-    check.appendChild(document.createTextNode('启用'));
+    check.appendChild(document.createTextNode(t('field.enable')));
     controlWrap.appendChild(check);
   } else if (item.type === 'select') {
     const select = document.createElement('select');
@@ -288,7 +301,7 @@ function prepareField(item) {
       const preview = document.createElement('button');
       preview.type = 'button';
       preview.className = 'theme-preview-btn';
-      preview.textContent = '预览主题';
+      preview.textContent = t('field.preview_theme');
       preview.title = '打开 11 组悬浮球风格预览页';
       preview.addEventListener('click', () => {
         try { chrome.tabs.create({ url: chrome.runtime.getURL('data/design_preview.html') }); } catch (e) { /* 忽略 */ }
@@ -319,7 +332,7 @@ function prepareField(item) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'workdir-pick';
-    btn.textContent = '选择目录';
+    btn.textContent = t('field.pick_dir');
     btn.addEventListener('click', async () => {
       try {
         const h = await window.showDirectoryPicker({ mode: 'readwrite' });
@@ -341,7 +354,7 @@ function prepareField(item) {
     const add = document.createElement('button');
     add.type = 'button';
     add.className = 'profile-add';
-    add.textContent = '+ 添加地址';
+    add.textContent = t('links.add');
     add.style.cssText = 'grid-column:1/-1;';
     add.addEventListener('click', () => {
       controlWrap.insertBefore(buildQuickLinkCard({}), add);
@@ -354,7 +367,7 @@ function prepareField(item) {
     const table = document.createElement('table');
     table.className = 'profile-table';
     table.innerHTML = '<thead><tr>' +
-      '<th>名称</th><th>网址正则</th><th>Base URL</th><th>Agent ID</th><th>TTS定位</th><th>输入定位</th><th>提示词</th><th>Token</th><th>模式</th><th class="profile-op"></th>' +
+      '<th>' + t('chat_profile.col_name') + '</th><th>' + t('chat_profile.col_regex') + '</th><th>Base URL</th><th>Agent ID</th><th>' + t('chat_profile.col_tts') + '</th><th>' + t('chat_profile.col_input') + '</th><th>' + t('chat_profile.col_prompt') + '</th><th>Token</th><th>' + t('chat_profile.col_mode') + '</th><th class="profile-op"></th>' +
       '</tr></thead>';
     const tbody = document.createElement('tbody');
     tbody.className = 'profile-rows';
@@ -363,7 +376,7 @@ function prepareField(item) {
     const add = document.createElement('button');
     add.type = 'button';
     add.className = 'profile-add';
-    add.textContent = '+ 添加配置';
+    add.textContent = t('chat_profile.add');
     add.addEventListener('click', () => tbody.appendChild(buildProfileRow({})));
     wrap.append(table, add);
     controlWrap.appendChild(wrap);
@@ -493,7 +506,7 @@ function readFormValues() {
 /* ---------- 加载 / 保存 / 重置 ---------- */
 function loadSettings() {
   chrome.storage.local.get(null, (all) => {
-    const merged = mergeWithStorage(STORAGE_SCHEMA, all);
+    const merged = mergeWithStorage(getSchema(), all);
     renderSettings(merged);
     // 一次性固化：把当前完整配置存为"默认快照"，此后点恢复默认回到此状态
     if (all.__defaults === undefined) {
@@ -520,7 +533,7 @@ function broadcastConfig() {
 function saveSettings() {
   const values = readFormValues();
   chrome.storage.local.set(values, () => {
-    showToast('保存成功');
+    showToast(t('toast.saved'));
     const theme = values.theme || 'flat';
     applyTheme(theme);
     broadcastConfig();
@@ -540,7 +553,7 @@ async function resetSettings() {
         value: defaults[item.key] !== undefined ? defaults[item.key] : item.value
       }))
     })));
-    showToast('已填入默认配置，点击保存生效');
+    showToast(t('toast.reset_done'));
   } catch (e) {
     showToast('恢复默认失败: ' + (e.message || e));
   }
@@ -637,4 +650,3 @@ document.addEventListener('change', (event) => {
   applyTheme(event.target.value || 'flat');
 });
 
-loadSettings();

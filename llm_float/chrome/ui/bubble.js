@@ -1,3 +1,7 @@
+initI18n(() => {
+  subCur && (subCur.textContent = t('bubble.wait_speak'));
+  asrText && (asrText.textContent = t('bubble.listening'));
+});
 const modeSub = document.getElementById('mode-sub');
 const modeAsr = document.getElementById('mode-asr');
 const subPrev = document.getElementById('sub-prev');
@@ -24,17 +28,17 @@ function setMode(payload) {
 
   if (currentMode === 'subtitle') {
     subPrev.textContent = '';
-    subCur.textContent = '等待播报…';
+    subCur.textContent = t('bubble.wait_speak');
   } else if (currentMode === 'asr') {
     asrFinal = '';
-    asrText.textContent = '聆听中…';
+    asrText.textContent = t('bubble.listening');
     if (asrStopBtn) asrStopBtn.style.display = '';
   }
 }
 
 function onTtsSentence(payload) {
   const prev = subCur.textContent;
-  subPrev.textContent = prev === '等待播报…' ? '' : prev;
+  subPrev.textContent = prev === t('bubble.wait_speak') ? '' : prev;
   subCur.textContent = payload.text;
   // 从左到右扫入动画（每次新句子重新触发）
   subCur.classList.remove('scan');
@@ -43,7 +47,7 @@ function onTtsSentence(payload) {
 }
 
 function onTtsIdle() {
-  subCur.textContent = '播报结束';
+  subCur.textContent = t('bubble.speak_done');
 }
 
 function onAsrState(payload) {
@@ -57,9 +61,9 @@ function onAsrState(payload) {
   if (wave) wave.style.display = listening ? '' : 'none';
   if (loading) loading.style.display = recognizing ? '' : 'none';
   if (recognizing) {
-    asrText.textContent = '识别中…';
+    asrText.textContent = t('bubble.recognizing');
   } else if (!listening && !asrFinal) {
-    asrText.textContent = '已停止';
+    asrText.textContent = t('bubble.stopped');
   }
 }
 
@@ -80,7 +84,7 @@ function renderAsr(interim) {
   } else if (interim) {
     asrText.textContent = interim;
   } else {
-    asrText.textContent = '聆听中…';
+    asrText.textContent = t('bubble.listening');
   }
 }
 
@@ -114,7 +118,7 @@ function runTtsDemo(text) {
   setMode({ mode: 'subtitle' });
   if (!('speechSynthesis' in window)) {
     subPrev.textContent = '';
-    subCur.textContent = '当前浏览器不支持语音合成';
+    subCur.textContent = t('bubble.no_synth');
     return;
   }
   try { speechSynthesis.cancel(); } catch (e) { /* 忽略 */ }

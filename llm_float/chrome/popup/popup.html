@@ -63,19 +63,19 @@
   </style>
 </head>
 <body>
-  <div class="title">LLM Float 悬浮助手</div>
+  <div class="title" id="popup-title"></div>
   <div class="state" id="state">状态：--</div>
   <div class="row">
     <button class="btn" id="btn-toggle" style="flex:2">
-      <span class="dot" id="dot-toggle"></span><span id="label-toggle">开关本插件</span>
+      <span class="dot" id="dot-toggle"></span><span id="label-toggle"></span>
     </button>
     <button class="btn" id="btn-settings">
-      <span class="dot" style="background:var(--accent-2, #a78bfa)"></span>设置
+      <span class="dot" style="background:var(--accent-2, #a78bfa)"></span><span id="label-settings"></span>
     </button>
   </div>
   <div class="sep"></div>
   <button class="btn full" id="btn-chat">
-    <span class="dot" style="background:var(--accent, #60a5fa)"></span>聊天页
+    <span class="dot" style="background:var(--accent, #60a5fa)"></span><span id="label-chat"></span>
   </button>
   <div class="sep"></div>
   <div id="quick-links"></div>
@@ -88,6 +88,7 @@
       <span class="dot" style="background:#22c55e"></span>ASR Demo
     </button>
   </div>
-  <script src="popup.js"></script>
+  <script src="../content/i18n.js"></script>
+<script src="popup.js"></script>
 </body>
 </html>

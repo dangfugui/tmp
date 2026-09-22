@@ -14,15 +14,19 @@ function send(type, payload) {
 }
 
 // 读取主题并应用
-chrome.storage.local.get(["orb_enabled", "theme", "quick_links"], (d) => {
+chrome.storage.local.get(["orb_enabled", "theme", "quick_links", "language"], (d) => {
+  I18N_LANG = d.language || "zh";
+  document.getElementById("popup-title").textContent = t("popup.title");
+  document.getElementById("label-settings").textContent = t("popup.settings");
+  document.getElementById("label-chat").textContent = t("popup.chat");
   const theme = d.theme || "glass";
   document.body.setAttribute("data-theme", theme);
 
   const enabled = d.orb_enabled !== false; // 默认开启
-  stateEl.textContent = "状态：" + (enabled ? "已开启（页面显示悬浮球）" : "已关闭（页面隐藏悬浮球）");
+  stateEl.textContent = enabled ? t("popup.status_on") : t("popup.status_off");
   stateEl.style.color = enabled ? "#4ade80" : "#f87171";
   dotToggle.style.background = enabled ? "#4ade80" : "#f87171";
-  labelToggle.textContent = enabled ? "关闭本插件" : "开启本插件";
+  labelToggle.textContent = enabled ? t("popup.toggle_on") : t("popup.toggle_off");
 
   // 插件关闭时，聊天页和 demo 按钮置灰
   if (!enabled) {

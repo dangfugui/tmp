@@ -169,7 +169,7 @@
       rec.start();
       asrActive = true;
       console.log("[llm-float][asr] 录音已开始 (mime=" + (rec.mimeType || "default") + ", state=" + rec.state + ")");
-      showAsrText("聆听中…（点击停止后识别）");
+      showAsrText(t("bubble.listening_stop"));
       // 启动真实音量分析（波形用）
       try {
         asrAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -239,7 +239,7 @@
     if (!doRecognize) return; // 互斥停止：直接结束
     const blob = new Blob(asrMediaChunks, { type: rec ? rec.mimeType || "audio/webm" : "audio/webm" });
     asrMediaChunks = [];
-    showAsrText("识别中…");
+    showAsrText(t("bubble.recognizing"));
     pushBubble("onAsrState", { state: "recognizing" });
     reportToBridge("onAsrState", { state: "recognizing" });
     getAsrConfig().then((cfg) => {
@@ -257,7 +257,7 @@
           // 兜底：用浏览器 SpeechRecognition 重新识别
           const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
           if (SR) {
-            showAsrText("接口失败，切换浏览器识别…");
+            showAsrText(t("bubble.recognizing"));
             const rec = new SR();
             rec.lang = "zh-CN";
             rec.interimResults = false;
@@ -450,7 +450,7 @@
     asrStopIntent = false;
     asrMuted = false;
     asrActive = true;
-    showAsrText("聆听中…（点击停止结束识别）");
+    showAsrText(t("bubble.listening_stop"));
     try { rec.start(); } catch (e) { showAsrFail("无法启动识别：" + (e && e.message ? e.message : String(e))); }
   }
 
