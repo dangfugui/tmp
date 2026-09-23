@@ -542,7 +542,7 @@ function scheduleBotRender() {
 }
 
 function setBusy(v) {
-  // 等待回复时按钮切换为可点击的「停止」
+  console.log("[setBusy]", v, "sendBtn=", sendBtn);
   busy = v;
   sendBtn.classList.toggle("stop", v);
   sendBtn.title = v ? "停止" : "发送";

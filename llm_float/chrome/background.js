@@ -144,6 +144,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case "llm_bridge": {
       // chat iframe 的 LLM agent 工具命令（page_* 等）：转发到当前活动页 content（main.js llm_bridge → callCommand）
       (async () => {
+        // web_fetch / web_post 不需要活动 tab，直接走 background
+        if (msg.cmd === "web_fetch" || msg.cmd === "web_post") {
+          const params = msg.params || {};
+          if (msg.cmd === "web_fetch") {
+            const r = await doWebFetch({ url: params.url || "", render: !!params.render });
+            sendResponse(r);
+          } else {
+            const r = await doWebPost({ url: params.url || "", body: params.body || "", headers: params.headers || "" });
+            sendResponse(r);
+          }
+          return true;
+        }
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
         const tab = tabs && tabs[0];
         if (!tab || !/^https?:/i.test(tab.url || "")) {
@@ -277,34 +289,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
     }
     case "llm_web_fetch": {
-      // background 发 fetch 不受 CORS 限制（MV3 background service worker）
-      (async () => {
-        try {
-          const url = msg.url || "";
-          if (!/^https?:/i.test(url)) { sendResponse({ ok: false, category: "bad_url", error: "url 需以 http/https 开头" }); return; }
-          const resp = await fetch(url, { redirect: "follow" });
-          const ct = resp.headers.get("content-type") || "";
-          if (!/text|html|json|xml/i.test(ct)) {
-            sendResponse({ ok: true, status: resp.status, contentType: ct, text: "(非文本内容)" }); return;
-          }
-          const html = await resp.text();
-          const text = html
-            .replace(/<script[\s\S]*?<\/script>/gi, "")
-            .replace(/<style[\s\S]*?<\/style>/gi, "")
-            .replace(/<[^>]+>/g, " ")
-            .replace(/\s+/g, " ")
-            .trim()
-            .slice(0, 8000);
-          sendResponse({ ok: true, status: resp.status, contentType: ct, text });
-        } catch (e) {
-          const m = String((e && e.message) || e);
-          let cat = "unknown";
-          if (/Failed to fetch|NetworkError/i.test(m)) cat = "network";
-          else if (/DNS|ENOTFOUND/i.test(m)) cat = "dns";
-          else if (/timeout/i.test(m)) cat = "timeout";
-          sendResponse({ ok: false, category: cat, error: m });
-        }
-      })();
+      doWebFetch(msg).then((r) => sendResponse(r));
       return true;
     }
     default:
@@ -555,3 +540,88 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 maybeBridgeConnect();
+
+async function doWebFetch(msg) {
+  try {
+    const url = msg.url || "";
+    if (!/^https?:/i.test(url)) return { ok: false, error: "url 需以 http/https 开头" };
+    if (msg.render) {
+      console.log("[web_fetch] render=true:", url);
+      const tab = await chrome.tabs.create({ url, active: false });
+      const tabId = tab.id;
+      try {
+        await new Promise((resolve) => {
+          let elapsed = 0;
+          const check = setInterval(async () => {
+            elapsed += 300;
+            try {
+              const t = await chrome.tabs.get(tabId);
+              if ((t.url && t.url.startsWith("http") && t.status === "complete") || elapsed >= 15000) {
+                clearInterval(check);
+                setTimeout(resolve, 4000);
+              }
+            } catch (e) { clearInterval(check); resolve(); }
+          }, 300);
+        });
+        const results = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => {
+            document.querySelectorAll("script,style,noscript").forEach((e) => e.remove());
+            return (document.body.innerText || "").trim();
+          }
+        });
+        const text = (results[0] && results[0].result || "").slice(0, 20000);
+        console.log("[web_fetch] render done:", text.length, "chars");
+        return { ok: true, status: 200, rendered: true, text };
+      } finally {
+        chrome.tabs.remove(tabId).catch(() => {});
+      }
+    }
+    const resp = await fetch(url, { redirect: "follow", credentials: "include" });
+    const ct = resp.headers.get("content-type") || "";
+    if (!/text|html|json|xml/i.test(ct)) {
+      return { ok: true, status: resp.status, contentType: ct, text: "(非文本内容)" };
+    }
+    const html = await resp.text();
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 8000);
+    return { ok: true, status: resp.status, contentType: ct, text };
+  } catch (e) {
+    const m = String((e && e.message) || e);
+    let cat = "unknown";
+    if (/Failed to fetch|NetworkError/i.test(m)) cat = "network";
+    else if (/DNS|ENOTFOUND/i.test(m)) cat = "dns";
+    return { ok: false, category: cat, error: m };
+  }
+}
+
+async function doWebPost(msg) {
+  try {
+    const url = msg.url || "";
+    if (!/^https?:/i.test(url)) return { ok: false, error: "url 需以 http/https 开头" };
+    const body = msg.body || "";
+    // 自动判断 Content-Type：JSON 对象 / JSON 数组 / 表单编码 / 纯文本
+    let contentType = "text/plain";
+    const trimmed = body.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      contentType = "application/json";
+    } else if (/^[\w.\-]+=[^&]*(&[\w.\-]+=[^&]*)*$/.test(trimmed)) {
+      contentType = "application/x-www-form-urlencoded";
+    }
+    const headers = { "Content-Type": contentType };
+    if (msg.headers) { try { Object.assign(headers, JSON.parse(msg.headers)); } catch (e) {} }
+    const resp = await fetch(url, { method: "POST", headers, body, credentials: "include" });
+    // 收集响应头
+    const respHeaders = {};
+    try { resp.headers.forEach((v, k) => { respHeaders[k] = v; }); } catch (e) {}
+    const text = await resp.text();
+    return { ok: true, status: resp.status, headers: respHeaders, text: text.slice(0, 8000) };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+}

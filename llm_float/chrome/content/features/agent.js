@@ -291,7 +291,7 @@ registerCommand("web_fetch", async (p) => {
   try {
     const url = (p && p.url) || "";
     if (!/^https?:/i.test(url)) return { ok: false, category: "bad_url", error: "url 需以 http/https 开头" };
-    const resp = await chrome.runtime.sendMessage({ type: "llm_web_fetch", url });
+    const resp = await chrome.runtime.sendMessage({ type: "llm_web_fetch", url, render: !!(p && p.render) });
     if (!resp) return { ok: false, category: "background", error: "background 无响应" };
     if (!resp.ok) return { ok: false, category: resp.category || "unknown", error: resp.error };
     const maxChars = Math.min(20000, Math.max(500, parseInt(p && p.maxChars, 10) || 8000));
