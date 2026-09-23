@@ -564,7 +564,11 @@ async function resetSettings() {
 async function exportSettings() {
   try {
     const all = await chrome.storage.local.get(null);
-    const blob = new Blob([JSON.stringify(all, null, 2)], { type: "application/json" });
+    const cfg = {};
+    for (const [k, v] of Object.entries(all)) {
+      if (!k.startsWith("chat_conv_")) cfg[k] = v;
+    }
+    const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -585,7 +589,11 @@ function importSettings() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      await chrome.storage.local.set(data);
+      const cfg = {};
+      for (const [k, v] of Object.entries(data)) {
+        if (!k.startsWith("chat_conv_")) cfg[k] = v;
+      }
+      await chrome.storage.local.set(cfg);
       showToast("已导入配置，刷新生效");
       setTimeout(() => location.reload(), 800);
     } catch (e) { showToast("导入失败: " + (e.message || e)); }
