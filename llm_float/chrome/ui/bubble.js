@@ -69,6 +69,8 @@ function onAsrState(payload) {
 
 /* 停止按钮：通知 content 停止录音/识别并收尾（结果发到聊天窗） */
 if (asrStopBtn) {
+  // mousedown preventDefault：点击停止按钮不抢焦点，保留原输入框光标
+  asrStopBtn.addEventListener('mousedown', (e) => { e.preventDefault(); });
   asrStopBtn.addEventListener('click', () => {
     console.log('[llm-float][bubble] asr stop clicked');
     try { window.parent.postMessage({ kind: 'bubble', action: 'asr_stop' }, '*'); } catch (e) { /* 忽略 */ }

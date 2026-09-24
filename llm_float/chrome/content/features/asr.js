@@ -92,29 +92,42 @@
       } else {
         console.log("[llm-float][asr] 输入定位检查: 没匹配到任何配置, 当前URL=" + curUrl);
       }
-      if (matchedProfile && matchedProfile.inputSelector) {
-        // 定位到输入框，输入结果，敲回车
-        const el = document.querySelector(matchedProfile.inputSelector);
-        if (el) {
-          console.log("[llm-float][asr] 输入定位检查: 找到元素，开始输入");
-          el.focus();
-          // 模拟输入
-          if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
-            el.value = t;
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-            // 敲回车
-            setTimeout(() => {
-              el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
-              // 输入完成关闭 ASR 弹窗
-              closePanel("bubble");
-            }, 100);
-          }
-          return;
-        } else {
-          console.log("[llm-float][asr] 输入定位检查: 没找到元素, selector=" + matchedProfile.inputSelector);
+      // 辅助：把文本填入元素并敲回车
+      const fillInto = (el, reason) => {
+        console.log("[llm-float][asr] 输入定位检查: " + reason + "，开始输入");
+        el.focus();
+        if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+          el.value = t;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        } else if (el.isContentEditable) {
+          el.textContent = t;
+          el.dispatchEvent(new InputEvent('input', { bubbles: true }));
         }
+        setTimeout(() => {
+          el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+          closePanel("bubble");
+        }, 100);
+      };
+      // 1. 优先：配置了 inputSelector
+      if (matchedProfile && matchedProfile.inputSelector) {
+        const el = document.querySelector(matchedProfile.inputSelector);
+        if (el) { fillInto(el, "配置定位命中"); return; }
+        console.log("[llm-float][asr] 输入定位检查: 没找到元素, selector=" + matchedProfile.inputSelector);
       }
-      // 没找到输入框，就发到聊天页面
+      // 2. 其次：光标当前就在页面某个输入框里
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) {
+        // 排除插件自己的 iframe
+        try {
+          if (ae.ownerDocument !== document) {
+            // 跨文档，忽略
+          } else {
+            fillInto(ae, "光标在页面输入框");
+            return;
+          }
+        } catch (e) {}
+      }
+      // 3. 都没有，发到聊天页面
       console.log("[llm-float][asr] 输入定位检查: 发到聊天页面");
       setTimeout(() => {
         callCommand("showChat", {});
