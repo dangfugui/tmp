@@ -27,6 +27,36 @@ function genSelector(el) {
   return parts.join(" > ");
 }
 
+/* 统一元素定位：querySelectorAll + index 参数，返回 {el, matched, idx, all} */
+function pickEl(p) {
+  const sel = (p && p.selector) || "";
+  let idx = 0;
+  if (p && p.index !== undefined && p.index !== null && p.index !== "") {
+    idx = parseInt(p.index, 10) || 0;
+  }
+  const all = Array.from(document.querySelectorAll(sel));
+  const matched = all.length;
+  const el = all[idx] || null;
+  return { el, matched, idx, all };
+}
+
+/* 候选列表：给 LLM 看清命中多个时的元素（最多 5 个） */
+function briefCandidates(all, limit) {
+  const n = Math.min(limit || 5, all.length);
+  const arr = [];
+  for (let i = 0; i < n; i++) {
+    const e = all[i];
+    arr.push({
+      index: i,
+      tag: e.tagName ? e.tagName.toLowerCase() : "",
+      text: (e.innerText || e.value || (e.getAttribute && e.getAttribute("aria-label")) || "").toString().trim().slice(0, 60),
+      selector: genSelector(e)
+    });
+  }
+  if (all.length > n) arr.push({ more: all.length - n });
+  return arr;
+}
+
 registerCommand("getPageInfo", () => {
   const t = ((document.body && document.body.innerText) || "").replace(/\s+/g, " ").trim();
   const interactive = [];
@@ -54,10 +84,20 @@ registerCommand("getPageInfo", () => {
 });
 registerCommand("querySelector", (p) => {
   try {
-    const el = document.querySelector((p && p.selector) || "");
-    if (!el) return { ok: true, data: { found: false } };
+    const { el, matched } = pickEl(p);
+    if (!el) return { ok: true, data: { found: false, matched: 0 } };
+    if (matched > 1) {
+      // 命中多个：返回所有匹配的文本列表
+      const results = [];
+      const all = document.querySelectorAll((p && p.selector) || "");
+      for (let i = 0; i < Math.min(20, all.length); i++) {
+        const e = all[i];
+        results.push({ index: i, selector: genSelector(e), text: (e.innerText || e.textContent || "").trim().slice(0, 800) });
+      }
+      return { ok: true, data: { found: true, matched, results } };
+    }
     const txt = (el.innerText || el.textContent || "").trim().slice(0, 3000);
-    return { ok: true, data: { found: true, text: txt, html: el.outerHTML.slice(0, 2000) } };
+    return { ok: true, data: { found: true, matched: 1, text: txt, html: el.outerHTML.slice(0, 2000) } };
   } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
 });
 registerCommand("execJs", (p) => {
@@ -76,19 +116,25 @@ registerCommand("execJs", (p) => {
 /* DOM 操作原语（不依赖 eval，不受页面 CSP 限制：点击 / 填表单 / 读属性） */
 registerCommand("page_click", (p) => {
   try {
-    const el = document.querySelector((p && p.selector) || "");
+    const { el, matched, all } = pickEl(p);
     if (!el) return { ok: false, error: "元素不存在: " + (p && p.selector) };
+    if (matched > 1 && !(p && p.index !== undefined && p.index !== null && p.index !== "")) {
+      return { ok: false, ambiguous: true, matched, candidates: briefCandidates(all), hint: "选择器命中多个，请传 index 或用候选里的精确 selector" };
+    }
     el.scrollIntoView({ block: "center" });
     el.click();
-    return { ok: true, action: "click", selector: genSelector(el), tag: el.tagName, text: (el.innerText || el.value || "").slice(0, 200),
+    return { ok: true, action: "click", selector: genSelector(el), tag: el.tagName, matched, index: (p && p.index !== undefined ? parseInt(p.index, 10) : 0), text: (el.innerText || el.value || "").slice(0, 200),
       checked: el.checked != null ? !!el.checked : undefined,
       expanded: el.getAttribute ? el.getAttribute("aria-expanded") : undefined };
   } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
 });
 registerCommand("page_set_input", (p) => {
   try {
-    const el = document.querySelector((p && p.selector) || "");
+    const { el, matched, all } = pickEl(p);
     if (!el) return { ok: false, error: "元素不存在: " + (p && p.selector) };
+    if (matched > 1 && !(p && p.index !== undefined && p.index !== null && p.index !== "")) {
+      return { ok: false, ambiguous: true, matched, candidates: briefCandidates(all), hint: "选择器命中多个，请传 index 或用候选里的精确 selector" };
+    }
     if (el.disabled) return { ok: false, skipped: true, reason: "disabled" };
     if (el.readOnly) return { ok: false, skipped: true, reason: "readonly" };
     const val = String((p && p.value) || "");
@@ -132,15 +178,24 @@ registerCommand("page_set_input", (p) => {
 });
 registerCommand("page_get_attr", (p) => {
   try {
-    const el = document.querySelector((p && p.selector) || "");
+    const { el, matched } = pickEl(p);
     if (!el) return { ok: false, error: "元素不存在: " + (p && p.selector) };
     const attr = (p && p.attr) || "value";
     const boolAttrs = ["checked", "disabled", "readonly", "required", "multiple", "autofocus", "selected"];
-    if (boolAttrs.includes(attr.toLowerCase())) {
-      return { ok: true, data: { attr, value: !!el[attr], type: "boolean" } };
+    const readVal = (e) => {
+      if (boolAttrs.includes(attr.toLowerCase())) return { attr, value: !!e[attr], type: "boolean" };
+      const v = e[attr] != null ? e[attr] : e.getAttribute(attr);
+      return { attr, value: v == null ? "" : String(v).slice(0, 2000) };
+    };
+    if (matched > 1) {
+      const results = [];
+      const all = document.querySelectorAll((p && p.selector) || "");
+      for (let i = 0; i < Math.min(20, all.length); i++) {
+        results.push({ index: i, selector: genSelector(all[i]), ...readVal(all[i]) });
+      }
+      return { ok: true, data: { matched, results } };
     }
-    const v = el[attr] != null ? el[attr] : el.getAttribute(attr);
-    return { ok: true, data: { attr, value: v == null ? "" : String(v).slice(0, 2000) } };
+    return { ok: true, data: { matched: 1, ...readVal(el) } };
   } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
 });
 registerCommand("page_scroll", (p) => {
@@ -150,8 +205,11 @@ registerCommand("page_scroll", (p) => {
       const dir = (p && p.direction) || "bottom";
       const startTop = window.scrollY || document.documentElement.scrollTop;
       if (sel) {
-        const el = document.querySelector(sel);
+        const { el, matched, all } = pickEl(p);
         if (!el) { resolve({ ok: false, error: "元素不存在: " + sel }); return; }
+        if (matched > 1 && !(p && p.index !== undefined && p.index !== null && p.index !== "")) {
+          resolve({ ok: false, ambiguous: true, matched, candidates: briefCandidates(all), hint: "选择器命中多个，请传 index 或用候选里的精确 selector" }); return;
+        }
         el.scrollIntoView({ block: "center" });
       } else if (dir === "top") {
         window.scrollTo(0, 0);
@@ -187,11 +245,14 @@ registerCommand("page_scroll", (p) => {
 });
 registerCommand("page_hover", (p) => {
   try {
-    const el = document.querySelector((p && p.selector) || "");
+    const { el, matched, all } = pickEl(p);
     if (!el) return { ok: false, error: "元素不存在: " + (p && p.selector) };
+    if (matched > 1 && !(p && p.index !== undefined && p.index !== null && p.index !== "")) {
+      return { ok: false, ambiguous: true, matched, candidates: briefCandidates(all), hint: "选择器命中多个，请传 index 或用候选里的精确 selector" };
+    }
     el.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
     el.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
-    return { ok: true, action: "hover", selector: genSelector(el), tag: el.tagName };
+    return { ok: true, action: "hover", selector: genSelector(el), tag: el.tagName, matched };
   } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
 });
 registerCommand("page_wait", (p) => {
@@ -205,10 +266,15 @@ registerCommand("page_press_key", (p) => {
   try {
     const key = String((p && p.key) || "Enter");
     const sel = (p && p.selector) || "";
-    let el;
+    let el, matched = 1;
     if (sel) {
-      el = document.querySelector(sel);
+      const pk = pickEl(p);
+      el = pk.el;
+      matched = pk.matched;
       if (!el) return { ok: false, error: "元素不存在: " + sel };
+      if (matched > 1 && !(p && p.index !== undefined && p.index !== null && p.index !== "")) {
+        return { ok: false, ambiguous: true, matched, candidates: briefCandidates(pk.all), hint: "选择器命中多个，请传 index 或用候选里的精确 selector" };
+      }
       el.focus();
     } else {
       el = document.activeElement || document.body;
@@ -266,23 +332,91 @@ registerCommand("page_get_links", () => {
 });
 registerCommand("page_get_html", (p) => {
   try {
-    const el = document.querySelector((p && p.selector) || "body");
-    if (!el) return { ok: false, error: "元素不存在: " + (p && p.selector) };
-    return { ok: true, data: { html: (el.outerHTML || "").slice(0, 5000) } };
+    const sel = (p && p.selector) || "body";
+    const { el, matched } = pickEl(Object.assign({}, p, { selector: sel }));
+    if (!el) return { ok: false, error: "元素不存在: " + sel };
+    if (matched > 1) {
+      const results = [];
+      const all = document.querySelectorAll(sel);
+      for (let i = 0; i < Math.min(20, all.length); i++) {
+        results.push({ index: i, selector: genSelector(all[i]), html: (all[i].outerHTML || "").slice(0, 1000) });
+      }
+      return { ok: true, data: { matched, results } };
+    }
+    return { ok: true, data: { matched: 1, html: (el.outerHTML || "").slice(0, 5000) } };
   } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
 });
+registerCommand("page_get_dom", (p) => {
+  try {
+    const sel = (p && p.selector) || "body";
+    const maxDepth = Math.min(10, Math.max(1, parseInt((p && p.maxDepth) || 5, 10) || 5));
+    const maxNodes = Math.min(500, Math.max(10, parseInt((p && p.maxNodes) || 200, 10) || 200));
+    const all = Array.from(document.querySelectorAll(sel));
+    if (!all.length) return { ok: false, error: "元素不存在: " + sel };
+    const SKIP_TAGS = new Set(["script", "style", "noscript", "template", "svg", "path", "link", "meta", "head", "title"]);
+    let count = 0;
+    function describe(el, depth) {
+      if (count >= maxNodes || depth > maxDepth) return null;
+      const tag = el.tagName ? el.tagName.toLowerCase() : "";
+      if (!tag || SKIP_TAGS.has(tag)) return null;
+      count++;
+      const node = { tag, selector: genSelector(el) };
+      if (el.id) node.id = el.id;
+      if (el.className && typeof el.className === "string") {
+        const cls = el.className.split(/\s+/).filter(Boolean).slice(0, 5);
+        if (cls.length) node.class = cls.join(".");
+      }
+      if (tag === "a" && el.href) node.href = el.href.slice(0, 200);
+      if (tag === "input") {
+        node.type = el.type || "text";
+        if (el.placeholder) node.placeholder = el.placeholder.slice(0, 50);
+      }
+      if (el.getAttribute && el.getAttribute("aria-label")) node.aria = el.getAttribute("aria-label").slice(0, 60);
+      if (el.getAttribute && el.getAttribute("role")) node.role = el.getAttribute("role");
+      if (el.getAttribute && el.getAttribute("data-testid")) node.testid = el.getAttribute("data-testid");
+      // 直接文本子节点（不重复算后代）
+      const directText = (el.childNodes && Array.from(el.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent).join(" ") || "").trim();
+      if (directText) node.text = directText.slice(0, 80);
+      else if (!el.children || !el.children.length) {
+        const t = (el.textContent || "").trim();
+        if (t) node.text = t.slice(0, 80);
+      }
+      if (el.children && el.children.length && depth < maxDepth) {
+        const kids = [];
+        for (const child of el.children) {
+          const d = describe(child, depth + 1);
+          if (d) kids.push(d);
+        }
+        if (kids.length) node.children = kids;
+      }
+      return node;
+    }
+    // 命中多个：返回所有匹配的树列表，共用 maxNodes 全局上限
+    const results = [];
+    for (const el of all) {
+      if (count >= maxNodes) break;
+      const t = describe(el, 0);
+      if (t) results.push(t);
+    }
+    return { ok: true, data: { root: sel, matched: all.length, nodes: count, truncated: count >= maxNodes, results } };
+  } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+});
+
 registerCommand("page_select", (p) => {
   try {
-    const el = document.querySelector((p && p.selector) || "");
+    const { el, matched, all } = pickEl(p);
     if (!el) return { ok: false, error: "元素不存在: " + (p && p.selector) };
+    if (matched > 1 && !(p && p.index !== undefined && p.index !== null && p.index !== "")) {
+      return { ok: false, ambiguous: true, matched, candidates: briefCandidates(all), hint: "选择器命中多个，请传 index 或用候选里的精确 selector" };
+    }
     if (el.tagName !== "SELECT") return { ok: false, error: "不是 select 元素: " + (p && p.selector) };
     const want = String((p && p.value) || "");
-    let matched = Array.from(el.options).find((o) => o.value === want);
-    if (!matched) matched = Array.from(el.options).find((o) => o.text.trim() === want);
-    if (!matched) return { ok: false, error: "选项不存在: " + want };
-    el.value = matched.value;
+    let opt = Array.from(el.options).find((o) => o.value === want);
+    if (!opt) opt = Array.from(el.options).find((o) => o.text.trim() === want);
+    if (!opt) return { ok: false, error: "选项不存在: " + want };
+    el.value = opt.value;
     el.dispatchEvent(new Event("change", { bubbles: true }));
-    return { ok: true, action: "select", selector: genSelector(el), value: matched.value, text: matched.text };
+    return { ok: true, action: "select", selector: genSelector(el), matched: matched, value: opt.value, text: opt.text };
   } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
 });
 
